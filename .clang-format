@@ -1,0 +1,10 @@
+---
+# We'll use defaults from the WebKit style
+BasedOnStyle: WebKit
+DerivePointerAlignment: false
+PointerAlignment: Right
+ColumnLimit: 100
+AlwaysBreakAfterReturnType: All
+MaxEmptyLinesToKeep: 2
+SortIncludes: false
+...

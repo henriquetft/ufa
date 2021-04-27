@@ -1,0 +1,6 @@
+*.code-workspace
+*.c~
+*.d
+*.o
+.vscode/
+

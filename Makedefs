@@ -1,0 +1,26 @@
+# Global definitions for all makefiles of the project.
+
+# Compilation parameters
+CC := gcc
+LD := gcc
+CFLAGS += -g
+CFLAGS += -Wall
+LDFLAGS :=
+
+
+# Unix tools
+RM := rm -f
+
+
+# to build dependencies
+# $(call make-depend,source-file,object-file,depend-file)
+define make-depend
+	$(CC) -MM \
+	-MF $3 \
+	-MP \
+	-MT $2 \
+	$(CFLAGS) \
+	$(CPPFLAGS) \
+	$(TARGET_ARCH) \
+	$1
+endef
