@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 
 typedef enum ufa_log_level_e {
     DEBUG = 0,
@@ -10,6 +11,7 @@ typedef enum ufa_log_level_e {
     WARN = 2,
     ERROR = 3,
     FATAL = 4,
+    LOG_OFF = INT_MAX,
 
 } ufa_log_level_t;
 

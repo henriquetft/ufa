@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "logging.h"
 
-static int loglevel = DEBUG;
+static int loglevel = LOG_OFF;
 
 char *
 ufa_log_level_to_str(ufa_log_level_t level)
@@ -50,7 +50,7 @@ _ufa_log(ufa_log_level_t level, char *format, va_list ap)
 
     /* man 3 stdarg */
 
-    FILE *file = stderr;
+    FILE *file = stdout;
 
     fprintf(file, "[LOG %s] ", ufa_log_level_to_str(level));
     vfprintf(file, format, ap);
