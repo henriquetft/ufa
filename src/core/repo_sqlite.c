@@ -18,6 +18,7 @@
 #include "misc.h"
 #include "repo.h"
 
+
 #define STR_CREATE_TABLE \
 "CREATE TABLE IF NOT EXISTS \"attribute\" ( \n"\
 	"\"id\"	INTEGER PRIMARY KEY AUTOINCREMENT, \n"\
@@ -35,13 +36,16 @@
 "); \n"\
 "CREATE TABLE IF NOT EXISTS \"file\" ( \n"\
 	"\"id\"	INTEGER PRIMARY KEY AUTOINCREMENT, \n"\
-	"\"name\"	TEXT \n"\
+	"\"name\"	TEXT UNIQUE \n"\
 "); \n"\
 "CREATE TABLE IF NOT EXISTS \"tag\" ( \n"\
 	"\"id\"	INTEGER PRIMARY KEY AUTOINCREMENT, \n"\
-	"\"name\"	TEXT \n"\
-"); \n"
-
+	"\"name\"	TEXT UNIQUE \n"\
+"); \n"\
+"CREATE UNIQUE INDEX IF NOT EXISTS \"un\" ON \"file_tag\" (\n"\
+	"\"id_file\","\
+	"\"id_tag\""\
+");"
 
 #define REPOSITORY_FILENAME "repo.sqlite"
 
@@ -72,6 +76,7 @@ ufa_repo_open(const char *file)
     char *errmsg = NULL;
     ufa_repo_conn_t *conn = malloc(sizeof *conn);
     int rc = sqlite3_open(file, &conn->db); /* create file if it do not exist */
+    sqlite3_extended_result_codes(conn->db, 1);
 
     if (rc != SQLITE_OK) {
         goto error_opening;
@@ -335,11 +340,13 @@ ufa_repo_list_files_for_dir(const char *path)
 }
 
 
-ufa_list_t *
-ufa_repo_get_tags_for_file(const char *filepath)
+int
+ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list)
 {
-    ufa_list_t *result = NULL;
+    //ufa_list_t *result = *list;
+    int ret = 0;
 
+    /* TODO check if file exist */
     char *filename = get_filename(filepath);
     ufa_debug("Listing tags for filename: %s (%s)", filename, filepath);
     char *sql = "SELECT DISTINCT t.name FROM file f , file_tag ft, tag t where f.id = ft.id_file "
@@ -350,6 +357,8 @@ ufa_repo_get_tags_for_file(const char *filepath)
     int prepare_ret = sqlite3_prepare_v2(conn->db, sql, -1, &stmt, NULL);
 
     if (prepare_ret != SQLITE_OK) {
+        ret = -1;
+        fprintf(stderr, "sqlite error on prepare: %d\n", prepare_ret);
         goto end;
     }
 
@@ -357,10 +366,236 @@ ufa_repo_get_tags_for_file(const char *filepath)
 
     while (sqlite3_step(stmt) != SQLITE_DONE) {
         const char *tag = (const char *)sqlite3_column_text(stmt, 0);
-        result = ufa_list_append(result, ufa_strdup(tag));
+        *list = ufa_list_append(*list, ufa_strdup(tag));
     }
 end:
     sqlite3_finalize(stmt);
     free(filename);
-    return result;
+    return ret;
+}
+
+
+static sqlite_int64
+_insert_tag(const char *tag)
+{
+    sqlite_int64 id_tag = -1;
+
+    int prepare_ret;
+    sqlite3_stmt *stmt = NULL;
+
+    char *sql_insert = "INSERT INTO tag (name) values(?)";
+    prepare_ret = sqlite3_prepare_v2(conn->db, sql_insert, -1, &stmt, NULL);
+    if (prepare_ret != SQLITE_OK) {
+        fprintf(stderr, "sqlite error on prepare: %d\n", prepare_ret);
+        goto end;
+    }
+    sqlite3_bind_text(stmt, 1, tag, -1, NULL);
+    int r = sqlite3_step(stmt);
+    if (r != SQLITE_DONE) {
+        fprintf(stderr, "sqlite error: %d\n", r);
+        goto end;
+    }
+    id_tag = sqlite3_last_insert_rowid(conn->db);
+    ufa_debug("Tag inserted: %lld\n", id_tag);
+
+end:
+    sqlite3_finalize(stmt);
+    return id_tag;
+}
+
+
+static int
+_insert_tag_if_not_exists(const char *tag)
+{
+    int tag_id = -1;
+
+    char *sql = "SELECT t.id FROM tag t WHERE t.name = ?";
+
+    sqlite3_stmt *stmt = NULL;
+    int prepare_ret = sqlite3_prepare_v2(conn->db, sql, -1, &stmt, NULL);
+
+    if (prepare_ret != SQLITE_OK) {
+        fprintf(stderr, "sqlite error on prepare: %d\n", prepare_ret);
+        goto end;
+    }
+
+    sqlite3_bind_text(stmt, 1, tag, -1, NULL);
+
+    while (sqlite3_step(stmt) != SQLITE_DONE) {
+        tag_id = sqlite3_column_int(stmt, 0);
+    }
+
+    sqlite3_finalize(stmt);
+    stmt = NULL;
+
+    if (tag_id == -1) {
+        ufa_debug("tag '%s' does not exisst. Inserting tag ...\n", tag);
+        tag_id = _insert_tag(tag);
+    } else {
+        ufa_debug("Tag '%s' ja existe\n", tag);
+    }
+
+end:
+    sqlite3_finalize(stmt);
+    return tag_id;
+}
+
+
+static int
+_get_file_id_by_name(const char *filename)
+{
+    int file_id = -1;
+    char *sql = "SELECT f.id FROM file f WHERE f.name = ?";
+    sqlite3_stmt *stmt = NULL;
+    int prepare_ret = sqlite3_prepare_v2(conn->db, sql, -1, &stmt, NULL);
+
+    if (prepare_ret != SQLITE_OK) {
+        fprintf(stderr, "sqlite error on prepare: %d\n", prepare_ret);
+        file_id = -1;
+        goto end;
+    }
+
+    sqlite3_bind_text(stmt, 1, filename, -1, NULL);
+
+    while (sqlite3_step(stmt) != SQLITE_DONE) {
+        file_id = sqlite3_column_int(stmt, 0);
+    }
+
+end:
+    sqlite3_finalize(stmt);
+    return file_id;
+}
+
+
+int
+_set_tag_for_file(int file_id, int tag_id)
+{
+    int status = 0;
+
+    char *sql_insert = "INSERT INTO file_tag (id_file, id_tag) VALUES (?, ?)";
+
+    int prepare_ret, r;
+    sqlite3_stmt *stmt = NULL;
+
+    prepare_ret = sqlite3_prepare_v2(conn->db, sql_insert, -1, &stmt, NULL);
+
+    if (prepare_ret != SQLITE_OK) {
+        fprintf(stderr, "sqlite error on prepare: %d\n", prepare_ret);
+        goto end;
+    }
+    sqlite3_bind_int(stmt, 1, file_id);
+    sqlite3_bind_int(stmt, 2, tag_id);
+
+    r = sqlite3_step(stmt);
+
+    if (r == SQLITE_CONSTRAINT_UNIQUE) {
+        status = 1;
+        ufa_debug("file is already tagged");
+    } else if (r == SQLITE_DONE) {
+        status = 1;
+        ufa_debug("file tagged");
+    }
+end:
+    sqlite3_finalize(stmt);
+    return status;
+}
+
+
+int
+ufa_repo_set_tag_on_file(const char *filepath, const char *tag)
+{
+    ufa_debug("Setting tag '%s' for file '%s'", tag, filepath);
+
+    int status = 0;
+    char *filename = get_filename(filepath);
+
+    int tag_id = _insert_tag_if_not_exists(tag);
+    if (tag_id == -1) {
+        fprintf(stderr, "error getting tag '%s'\n", tag);
+        goto end;
+    }
+
+    int file_id = _get_file_id_by_name(filename);
+    if (file_id == -1) {
+        fprintf(stderr, "file '%s' does not exist\n", filepath);
+        goto end;
+    }
+
+    status = _set_tag_for_file(file_id, tag_id);
+    if (!status) {
+        fprintf(stderr, "error setting tag '%s' on file '%s'", tag, filepath);
+    }
+
+end:
+    free(filename);
+    return status;
+}
+
+
+int
+ufa_repo_clear_tags_for_file(const char *filepath)
+{
+    int prepare_ret, r, status = 0;
+    sqlite3_stmt *stmt = NULL;
+
+    int file_id = _get_file_id_by_name(filepath);
+    if (file_id == -1) {
+        fprintf(stderr, "file '%s' does not exist\n", filepath);
+        goto end;
+    }
+    char *sql = "DELETE FROM file_tag WHERE id_file=?";
+
+    prepare_ret = sqlite3_prepare_v2(conn->db, sql, -1, &stmt, NULL);
+    if (prepare_ret != SQLITE_OK) {
+        fprintf(stderr, "sqlite error: %d\n", prepare_ret);
+        goto end;
+    }
+
+    sqlite3_bind_int(stmt, 1, file_id);
+
+    r = sqlite3_step(stmt);
+    if (r != SQLITE_DONE) {
+        fprintf(stderr, "sqlite error: %d\n", r);
+        goto end;
+    }
+    status = 1;
+end:
+    sqlite3_finalize(stmt);
+    return status;
+}
+
+
+int
+ufa_repo_unset_tag_on_file(const char *filepath, const char *tag)
+{
+    int prepare_ret, r, status = 0;
+    sqlite3_stmt *stmt = NULL;
+
+    int file_id = _get_file_id_by_name(filepath);
+    if (file_id == -1) {
+        fprintf(stderr, "file '%s' does not exist\n", filepath);
+        goto end;
+    }
+
+    char *sql_delete = "DELETE FROM file_tag WHERE id_file = ? AND id_tag = (SELECT t.id FROM tag "
+                       "t WHERE t.name = ?)";
+    prepare_ret = sqlite3_prepare_v2(conn->db, sql_delete, -1, &stmt, NULL);
+    if (prepare_ret != SQLITE_OK) {
+        fprintf(stderr, "sqlite error on prepare: %d\n", prepare_ret);
+        goto end;
+    }
+
+    sqlite3_bind_int(stmt, 1, file_id);
+    sqlite3_bind_text(stmt, 2, tag, -1, NULL);
+
+    r = sqlite3_step(stmt);
+    if (r != SQLITE_DONE) {
+        fprintf(stderr, "sqlite error: %d\n", r);
+        goto end;
+    }
+
+    status = 1;
+end:
+    sqlite3_finalize(stmt);
+    return status;
 }
