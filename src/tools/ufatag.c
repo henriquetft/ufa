@@ -151,7 +151,7 @@ handle_unset()
     }
 
     char *file = NEXT_ARG;
-	char *tag = NEXT_ARG;
+    char *tag = NEXT_ARG;
 
     int ret = ufa_repo_unset_tag_on_file(file, tag);
     return ret ? 0 : 1;
@@ -180,21 +180,21 @@ handle_list()
     ufa_list_free_full(list, free);
 
 
-	return ret >= 0 ? 0 : 1;
+    return ret >= 0 ? 0 : 1;
 }
 
 /* set tag on file */
 static int
 handle_set()
 {
-	if (!HAS_MORE_ARGS(2)) {
+    if (!HAS_MORE_ARGS(2)) {
         print_usage_set(stderr);
         return -1;
     }
 
     char *file = NEXT_ARG;
-	char *new_tag = NEXT_ARG;
-	
+    char *new_tag = NEXT_ARG;
+
     int ret = ufa_repo_set_tag_on_file(file, new_tag);
     return ret ? 0 : 1;
 }
@@ -254,31 +254,31 @@ handle_help_command(char *command)
 int
 main(int argc, char *argv[])
 {
-	program_name = argv[0];
+    program_name = argv[0];
     global_args = argc;
     global_argv = argv;
 
     int opt;
-	char *repository = NULL;
+    char *repository = NULL;
 
     int error = 0;
-	int r = 0, v = 0, h = 0;
+    int r = 0, v = 0, h = 0;
     while ((opt = getopt(argc, argv, ":r:hv")) != -1) {
         switch (opt) {
         case 'r':
             if (r) {
                 error = 1;
             } else {
-			    r = 1;
-			    repository = optarg;
+                r = 1;
+                repository = optarg;
             }
             break;
         case 'v':
-			v = 1;
+            v = 1;
             printf("%s\n", program_version);
             break;
         case 'h':
-			h = 1;
+            h = 1;
             break;
         case '?':
             error = 1;
@@ -301,7 +301,7 @@ main(int argc, char *argv[])
     } else if (error == 1) {
         print_usage(stderr);
         return -1;
-    } 
+    }
 
     if (!HAS_NEXT_ARG) {
         print_usage(stderr);
@@ -309,6 +309,6 @@ main(int argc, char *argv[])
     }
 
     char *command = NEXT_ARG;
-	ufa_repo_init(repository);
+    ufa_repo_init(repository);
     return handle_command(command);
 }
