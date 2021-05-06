@@ -17,6 +17,7 @@ ufafs : src/core/ufafs.o \
 		src/util/logging.o \
 		src/util/misc.o \
 		src/util/list.o \
+		src/util/error.o \
 		-lfuse3 \
 		-lsqlite3 \
 		-lpthread

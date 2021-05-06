@@ -10,9 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "logging.h"
-#include "misc.h"
-#include "repo.h"
+#include <sysexits.h>
+#include "util/logging.h"
+#include "util/misc.h"
+#include "core/repo.h"
+#include "util/list.h"
 
 
 /* ============================================================================================== */
@@ -53,7 +55,7 @@ static int
 handle_command(char *command);
 
 static int
-handle_help_command(char *command);
+handle_help_option(char *command);
 
 
 /* ============================================================================================== */
@@ -63,6 +65,8 @@ handle_help_command(char *command);
 #define HAS_NEXT_ARG (optind < global_args)
 #define HAS_MORE_ARGS(num) (optind+num-1 < global_args)
 #define NEXT_ARG global_argv[optind++]
+
+#define EXIT_COMMAND_NOT_FOUND 127
 
 static int global_args = -1;
 static char **global_argv = NULL;
@@ -147,14 +151,14 @@ handle_unset()
 {
     if (!HAS_MORE_ARGS(2)) {
         print_usage_unset(stderr);
-        return -1;
+        return EX_USAGE;
     }
 
     char *file = NEXT_ARG;
     char *tag = NEXT_ARG;
 
-    int ret = ufa_repo_unset_tag_on_file(file, tag);
-    return ret ? 0 : 1;
+    bool ret = ufa_repo_unset_tag_on_file(file, tag);
+    return ret ? EX_OK : EXIT_FAILURE;
 }
 
 
@@ -164,24 +168,23 @@ handle_list()
 {
     if (!HAS_NEXT_ARG) {
         print_usage_list(stderr);
-        return -1;
+        return EX_USAGE;
     }
 
     char *arg = NEXT_ARG;
-
 
     /* FIXME must fail if file does not exist */
     ufa_list_t *list = NULL;
     int ret = ufa_repo_get_tags_for_file(arg, &list);
 
-    for (ufa_list_t *iter = list; iter != NULL; iter = iter->next) {
+    for (UFA_LIST_EACH(iter, list)) {
         printf("%s\n", (char *)iter->data);
     }
     ufa_list_free_full(list, free);
 
-
-    return ret >= 0 ? 0 : 1;
+    return ret >= 0 ? EX_OK : EXIT_FAILURE;
 }
+
 
 /* set tag on file */
 static int
@@ -189,62 +192,64 @@ handle_set()
 {
     if (!HAS_MORE_ARGS(2)) {
         print_usage_set(stderr);
-        return -1;
+        return EX_USAGE;
     }
 
     char *file = NEXT_ARG;
     char *new_tag = NEXT_ARG;
 
-    int ret = ufa_repo_set_tag_on_file(file, new_tag);
-    return ret ? 0 : 1;
+    bool ret = ufa_repo_set_tag_on_file(file, new_tag);
+    return ret ? EX_OK : EXIT_FAILURE;
 }
 
 
-/* remove all tags from a file */
+/**
+ * Handle clear command.
+ * Removes all tags from a file.
+ */
 static int
 handle_clear()
 {
     if (!HAS_NEXT_ARG) {
         print_usage_clear(stderr);
-        return -1;
+        return EX_USAGE;
     }
 
     char *file = NEXT_ARG;
 
-    int ret = ufa_repo_clear_tags_for_file(file);
-    return ret ? 0 : 1;
+    bool ret = ufa_repo_clear_tags_for_file(file);
+    return ret ? EX_OK : EXIT_FAILURE;
 }
-
 
 
 static int
 handle_command(char *command)
 {
-    int exit_status = -1;
+    int exit_status = EXIT_COMMAND_NOT_FOUND;
     for (int pos = 0; pos < NUM_COMMANDS; pos++) {
         if (ufa_util_strequals(command, commands[pos])) {
             exit_status = handle_commands[pos]();
         }
     }
-    if (exit_status == -1) {
+    if (exit_status == EXIT_COMMAND_NOT_FOUND) {
         fprintf(stderr, "\ninvalid command");
         fprintf(stderr, "\nSee %s -h\n", program_name);
-        exit_status = 1;
     }
     return exit_status;
 }
 
+
 static int
-handle_help_command(char *command)
+handle_help_option(char *command)
 {
-    int exit_code = -1;
+    int exit_code = EXIT_COMMAND_NOT_FOUND;
     for (int pos = 0; pos < NUM_COMMANDS; pos++) {
         if (ufa_util_strequals(command, commands[pos])) {
             help_commands[pos](stdout);
-            exit_code = 0;
+            exit_code = EX_OK;
         }
     }
-    if (exit_code != 0) {
+    if (exit_code != EX_OK) {
         fprintf(stderr, "invalid command\n");
     }
     return exit_code;
@@ -255,8 +260,8 @@ int
 main(int argc, char *argv[])
 {
     program_name = argv[0];
-    global_args = argc;
-    global_argv = argv;
+    global_args  = argc;
+    global_argv  = argv;
 
     int opt;
     char *repository = NULL;
@@ -267,10 +272,10 @@ main(int argc, char *argv[])
         switch (opt) {
         case 'r':
             if (r) {
-                error = 1;
+                error = EX_USAGE;
             } else {
                 r = 1;
-                repository = optarg;
+                repository = ufa_strdup(optarg);
             }
             break;
         case 'v':
@@ -281,34 +286,50 @@ main(int argc, char *argv[])
             h = 1;
             break;
         case '?':
-            error = 1;
+            error = EX_USAGE;
             fprintf(stderr, "unknown option: %c\n", optopt);
             break;
         default:
-            error = 1;
+            error = EX_USAGE;
         }
     }
 
     if (h) {
         if (HAS_NEXT_ARG) {
-            return handle_help_command(NEXT_ARG);
+            return handle_help_option(NEXT_ARG);
         } else {
             print_usage(stdout);
-            return 0;
+            return EX_OK;
         }
     } else if (v) {
-        return 0;
-    } else if (error == 1) {
+        return EX_OK;
+    } else if (error) {
         print_usage(stderr);
-        return -1;
+        return EX_USAGE;
     }
 
     if (!HAS_NEXT_ARG) {
         print_usage(stderr);
-        return -1;
+        return EX_USAGE;
     }
 
     char *command = NEXT_ARG;
-    ufa_repo_init(repository);
+    if (repository == NULL) {
+        // repository = ufa_util_get_current_dir();
+        // ufa_debug("Using CWD as repository: %s", repository);
+        fprintf(stderr, "error: you must specify a repository path\n");
+        return EXIT_FAILURE;
+    }
+
+    ufa_error_t *err = NULL;
+    if (!ufa_repo_init(repository, &err)) {
+        fprintf(stderr, "%s\n", err->message);
+        ufa_error_free(err);
+        free(repository);
+        return 1;
+    }
+
+    free(repository);
+
     return handle_command(command);
 }

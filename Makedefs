@@ -3,10 +3,10 @@
 # Compilation parameters
 CC := gcc
 LD := gcc
-CFLAGS += -g
+CFLAGS += -g 
 CFLAGS += -Wall
 LDFLAGS :=
-
+#CFLAGS += -fsanitize=address
 
 # Unix tools
 RM := rm -f

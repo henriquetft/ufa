@@ -14,6 +14,11 @@ typedef void (*ufa_list_free_func)(void *data);
     for (; (list->prev != NULL); list = list->prev)                                                \
         ;
 
+#define UFA_LIST_EACH(iter_var, list_var)                                                          \
+    ufa_list_t *iter_var = list_var;                                                               \
+    (iter_var != NULL);                                                                            \
+    iter_var = iter_var->next
+
 ufa_list_t *
 ufa_list_append(ufa_list_t *list, void *element);
 

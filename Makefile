@@ -5,7 +5,7 @@
 
 include Makedefs
 
-CFLAGS += -I"include" -I"/usr/include" -I/usr/include/fuse3
+CFLAGS += -I"src" -I"/usr/include" -I/usr/include/fuse3
 
 # these vars will be modified by the other makefiles
 SOURCES :=

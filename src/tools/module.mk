@@ -29,6 +29,7 @@ ufatag : $(LOCAL_DIR)/ufatag.o \
 	src/util/misc.o \
 	src/util/list.o \
 	src/core/repo_sqlite.o \
+	src/util/error.o \
 	-lsqlite3
 	@echo creating "$@" executable...
 	$(LD) $(CFLAGS) -o"$@" $^ $(LDFLAGS)

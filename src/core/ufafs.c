@@ -19,11 +19,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "list.h"
-#include "logging.h"
-#include "misc.h"
-#include "repo.h"
+#include <stdbool.h>
+#include "util/list.h"
+#include "util/logging.h"
+#include "util/misc.h"
+#include "core/repo.h"
 
+
+static struct stat stat_repository;
 
 static struct options {
     const char *repository;
@@ -54,6 +57,24 @@ ufa_fuse_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
     return NULL;
 }
 
+static void
+copy_stat(struct stat *dest, struct stat *src)
+{
+    dest->st_dev     = src->st_dev;
+    dest->st_ino     = src->st_ino;
+    dest->st_mode    = src->st_mode;
+    dest->st_nlink   = src->st_nlink;
+    dest->st_uid     = src->st_uid;
+    dest->st_gid     = src->st_gid;
+    dest->st_rdev    = src->st_rdev;
+    dest->st_size    = src->st_size;
+    dest->st_atime   = src->st_atime;
+    dest->st_blksize = src->st_blksize;
+    dest->st_blocks  = src->st_blocks;
+    dest->st_ctime   = src->st_ctime;
+    dest->st_mtime   = src->st_mtime;
+}
+
 static int
 ufa_fuse_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
 {
@@ -64,23 +85,17 @@ ufa_fuse_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi
 
     /* IS ROOT */
     if (ufa_util_strequals(path, "/")) {
-        stbuf->st_mode = S_IFDIR | 0755;
-        stbuf->st_nlink = 2;
+        copy_stat(stbuf, &stat_repository);
 
-        /* it is a file */
-    } else if ((filepath = ufa_repo_get_file_path(path)) != NULL) {
-        stbuf->st_mode = S_IFREG | 0444;
-        stbuf->st_nlink = 1;
-
+    /* it is a file */
+    } else if ((filepath = ufa_repo_get_file_path(path, NULL)) != NULL) {
         struct stat st;
         stat(filepath, &st);
-        __off_t size = st.st_size;
-        stbuf->st_size = size;
+        copy_stat(stbuf, &st);
 
-        /* it is another tag */;
-    } else if (ufa_repo_is_a_tag(path)) {
-        stbuf->st_mode = S_IFDIR | 0755;
-        stbuf->st_nlink = 2;
+    /* it is another tag */;
+    } else if (ufa_repo_is_a_tag(path, NULL)) {
+        copy_stat(stbuf, &stat_repository);
     } else {
         res = -ENOENT;
     }
@@ -91,6 +106,7 @@ ufa_fuse_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi
     return res;
 }
 
+
 static int
 ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
     struct fuse_file_info *fi, enum fuse_readdir_flags flags)
@@ -99,12 +115,17 @@ ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
     filler(buf, ".", NULL, 0, 0);
     filler(buf, "..", NULL, 0, 0);
 
-    ufa_list_t *list = ufa_repo_list_files_for_dir(path);
+    ufa_error_t *error = NULL;
+    ufa_list_t *list = ufa_repo_list_files_for_dir(path, &error);
+    abort_on_error(error);
     ufa_list_t *head = list;
 
     for (; (list != NULL); list = list->next) {
         ufa_debug("...listing '%s'", (char *)list->data);
-        filler(buf, list->data, NULL, 0, 0);
+        int r = filler(buf, list->data, NULL, 0, 0);
+        if (r != 0) {
+            return -ENOMEM;
+        }
     }
 
     if (head) {
@@ -116,10 +137,11 @@ ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
     return 0;
 }
 
+
 static int
 ufa_fuse_open(const char *path, struct fuse_file_info *fi)
 {
-    ufa_debug("open: '%s' ---> '%s'\n", path, ufa_repo_get_file_path(path));
+    ufa_debug("open: '%s' ---> '%s'\n", path, ufa_repo_get_file_path(path, NULL));
 
     if ((fi->flags & O_ACCMODE) != O_RDONLY) {
         printf("ok\n");
@@ -130,11 +152,12 @@ ufa_fuse_open(const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
+
 static int
 ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
     /* ex: /tag1/arquivo_real.txt */
-    char *filepath = ufa_repo_get_file_path(path);
+    char *filepath = ufa_repo_get_file_path(path, NULL);
     ufa_debug("read: %s ---> %s (%ld / %lu)", path, filepath, offset, size);
 
     int res = 0;
@@ -154,18 +177,47 @@ ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fus
 }
 
 
+int ufa_fuse_mkdir(const char *path, mode_t mode)
+{
+    ufa_debug("mkdir: %s", path);
+    if (ufa_util_str_startswith(path, "/") && ufa_util_strcount(path, "/") == 1) {
+        ufa_list_t *split = ufa_util_str_split(path, "/");
+        ufa_list_t *last = ufa_list_get_last(split);
+        char *last_part = (char *)last->data;
+        int r = ufa_repo_insert_tag(last_part);
+        ufa_list_free_full(split, free);
+        if (r == 0) {
+            return -EEXIST;
+        } else if (r < 0) {
+            return -ENOTDIR;
+        }
+        return 0;
+        //-EEXIST
+    } else {
+        return -ENOTDIR;
+    }
+}
+
+
 static const struct fuse_operations ufa_fuse_oper = {
-    .init = ufa_fuse_init,
+    .init    = ufa_fuse_init,
     .getattr = ufa_fuse_getattr,
     .readdir = ufa_fuse_readdir,
-    .open = ufa_fuse_open,
-    .read = ufa_fuse_read,
+    .open    = ufa_fuse_open,
+    .read    = ufa_fuse_read,
+    .mkdir   = ufa_fuse_mkdir,
 };
 
-// ./ufafs --repository=/home/henrique/files -f /home/henrique/teste
+
+
+// ./ufafs -s --repository=/home/henrique/files -f /home/henrique/teste
 int
 main(int argc, char *argv[])
 {
+    if (getuid() == 0 || geteuid() == 0) {
+        fprintf(stderr, "For security reasons you cannot run %s as root\n", argv[0]);
+        return 1;
+    }
     ufa_debug("Initializing UFA FUSE Filesystem ...");
 
     int ret;
@@ -181,15 +233,17 @@ main(int argc, char *argv[])
         args.argv[0][0] = '\0';
     }
 
-    int r = ufa_repo_init(options.repository);
-    if (r) {
+    bool init = ufa_repo_init(options.repository, NULL);
+    if (!init && !options.show_help) {
         fprintf(stderr, "Repository '%s' is not a dir or doesn't exist\n", options.repository);
         return -1;
     }
 
-    ret = fuse_main(args.argc, args.argv, &ufa_fuse_oper, NULL);
-    printf("RET: %d\n", ret);
+    stat(options.repository, &stat_repository);
 
+    ufa_debug("Calling fuse_main ...");
+    ret = fuse_main(args.argc, args.argv, &ufa_fuse_oper, NULL);
+    printf("fuse_main returned: %d\n", ret);
 
     ufa_debug("Exiting ...");
     fuse_opt_free_args(&args);

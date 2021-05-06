@@ -13,6 +13,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <linux/limits.h>
+
 #include "misc.h"
 #include "list.h"
 #include "logging.h"
@@ -147,6 +150,18 @@ ufa_util_isfile(const char *filename)
     return (stat(filename, &st) == 0 && S_ISREG(st.st_mode));
 }
 
+char *
+ufa_util_get_current_dir()
+{
+   char cwd[PATH_MAX];
+   if (getcwd(cwd, sizeof(cwd)) != NULL) {
+       return ufa_strdup(cwd);
+   } else {
+       perror("getcwd() error");
+       return NULL;
+   }
+}
+
 
 int
 ufa_util_strequals(const char *str1, const char *str2)
@@ -178,4 +193,39 @@ ufa_util_str_multiply(const char *str, int times)
         strcat(new_str + len * x, str);
     }
     return new_str;
+}
+
+int
+ufa_util_strcount(const char *str, const char *part)
+{
+    size_t len_part = strlen(part);
+    int found = 0;
+    char *f = str;
+    while ((f = strstr(f, part)) != NULL) {
+        found++;
+        f = f + len_part; 
+    }
+    return found;
+}
+
+
+char *
+ufa_str_vprintf(char const *format, va_list ap)
+{
+    va_list args2;
+    va_copy(args2, ap);
+    size_t len = vsnprintf(NULL, 0, format, ap);
+    char *buffer = (char*) calloc(len+1, 1);
+    vsprintf(buffer, format, args2);
+    return buffer;
+}
+
+char *
+ufa_str_sprintf(char const *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    char *result = ufa_str_vprintf(format, ap);
+    va_end(ap);
+    return result;
 }

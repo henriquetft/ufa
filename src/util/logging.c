@@ -1,8 +1,8 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include "logging.h"
+#include "util/logging.h"
 
-static int loglevel = LOG_OFF;
+static int loglevel = DEBUG;
 
 char *
 ufa_log_level_to_str(ufa_log_level_t level)
@@ -26,7 +26,6 @@ ufa_log_level_to_str(ufa_log_level_t level)
 ufa_log_level_t
 ufa_log_str_to_level(char *level)
 {
-
     if (!strcasecmp(level, "DEBUG")) {
         return DEBUG;
     } else if (!strcasecmp(level, "INFO")) {

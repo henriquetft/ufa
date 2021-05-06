@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "logging.h"
-#include "misc.h"
+#include "util/logging.h"
+#include "util/misc.h"
 
 
 int

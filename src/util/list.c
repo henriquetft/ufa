@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include "list.h"
 
-
 // =================================================================================================
 // AUXILIARY FUNCTIONS
 // =================================================================================================
@@ -28,9 +27,11 @@ new_node(void *data, ufa_list_t *prev, ufa_list_t *next);
 // FUNCTIONS FROM list.h
 // =================================================================================================
 
-/* Adds the element after the last one.
+/**
+ * Adds the element after the last one.
  * Returns: the same list with the new element in the tail, or the new node
- * (new single-element list) if list was NULL */
+ * (new single-element list) if list was NULL
+ */
 ufa_list_t *
 ufa_list_append(ufa_list_t *list, void *element)
 {
