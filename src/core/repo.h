@@ -10,7 +10,7 @@ typedef enum
 {
     UFA_ERROR_DATABASE,
     UFA_ERROR_NOTDIR,
-    UFA_ERROR_STAT,
+    UFA_ERROR_FILE,
     UFA_ERROR_STATE,
 } ufa_repo_error_t;
 

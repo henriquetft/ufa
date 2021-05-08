@@ -167,7 +167,7 @@ error_opening:
     ufa_error_set(error, UFA_ERROR_DATABASE, "Error opening SQLite db %s. Returned: %d", file, rc);
     return NULL;
 error_stat:
-    ufa_error_set(error, UFA_ERROR_STAT, strerror(errno));
+    ufa_error_set(error, UFA_ERROR_FILE, strerror(errno));
     free(conn);
     return NULL;
 error_create_table:
