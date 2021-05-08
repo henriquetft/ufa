@@ -53,6 +53,7 @@
 
 #define REPOSITORY_FILENAME "repo.sqlite"
 #define db_prepare(stmt, sql, error) _db_prepare(stmt, sql, error, __func__)
+#define db_execute(stmt, error) _db_execute(stmt, error, __func__)
 
 typedef struct ufa_repo_conn_s {
     sqlite3 *db; /* sqlite3 object */
@@ -82,6 +83,20 @@ _db_prepare(sqlite3_stmt **stmt, char *sql, ufa_error_t **error, const char* fun
 }
 
 
+static bool
+_db_execute(sqlite3_stmt *stmt, ufa_error_t **error, const char* func_name)
+{
+    bool status = true;
+    int r = sqlite3_step(stmt);
+    if (r != SQLITE_DONE) {
+        ufa_error_set(error, UFA_ERROR_DATABASE, "error on function %s:   %s", __func__,
+            sqlite3_errmsg(conn->db));
+        status = false;
+    }
+    return status;
+}
+
+
 /**
  * Returns a newly-allocated string with characters '?' separated by ','.
  * The number of characters '?' is equal to the number of elements in list.
@@ -108,8 +123,8 @@ static char *
 _get_filename(const char *filepath)
 {
     ufa_list_t *split = ufa_util_str_split(filepath, UFA_FILE_SEPARATOR);
-    ufa_list_t *last = ufa_list_get_last(split);
-    char *last_part = ufa_strdup((char *)last->data);
+    ufa_list_t *last  = ufa_list_get_last(split);
+    char *last_part   = ufa_strdup((char *)last->data);
     ufa_list_free_full(split, free);
     return last_part;
 }
@@ -120,11 +135,11 @@ _get_filename(const char *filepath)
  * Returns the ufa_repo_conn_t or NULL on error. 
  */
 static ufa_repo_conn_t *
-_open_sqlite_conn(const char *file)
+_open_sqlite_conn(const char *file, ufa_error_t **error)
 {
-    char *errmsg = NULL;
+    char *errmsg          = NULL;
     ufa_repo_conn_t *conn = malloc(sizeof *conn);
-    int rc = sqlite3_open(file, &conn->db); /* create file if it do not exist */
+    int rc                = sqlite3_open(file, &conn->db); /* create file if it do not exist */
     sqlite3_extended_result_codes(conn->db, 1);
 
     if (rc != SQLITE_OK) {
@@ -149,14 +164,14 @@ _open_sqlite_conn(const char *file)
 
 error_opening:
     free(conn);
-    ufa_error("Error opening SQLite db %s. Returned: %d", file, rc);
+    ufa_error_set(error, UFA_ERROR_DATABASE, "Error opening SQLite db %s. Returned: %d", file, rc);
     return NULL;
 error_stat:
+    ufa_error_set(error, UFA_ERROR_STAT, strerror(errno));
     free(conn);
-    perror("stat");
     return NULL;
 error_create_table:
-    ufa_error("SQLite3 error creating table: (%d) - %s", rc, errmsg);
+    ufa_error_set(error, UFA_ERROR_DATABASE, "error creating tables: %s", sqlite3_errmsg(conn->db));
     sqlite3_free(errmsg);
     sqlite3_close(conn->db);
     free(conn);
@@ -166,6 +181,7 @@ error_create_table:
 
 /**
  * Gets the tag id for a tag name
+ * Returns negative values on error; 0 for tag not found; id of a tag when found
  */
 static int
 _get_tag_id_by_name(const char *tag, ufa_error_t **error)
@@ -248,7 +264,7 @@ _get_files_with_tags(ufa_list_t *tags, ufa_error_t **error)
     char *full_sql
         = ufa_str_sprintf("SELECT DISTINCT f.id,f.name FROM tag t, file_tag ft, file f WHERE "
                           "ft.id_tag = t.id AND f.id = ft.id_file AND t.name IN (%s)",
-            sql_args);
+                          sql_args);
 
     ufa_debug("Executing query: %s", full_sql);
 
@@ -264,12 +280,12 @@ _get_files_with_tags(ufa_list_t *tags, ufa_error_t **error)
 
     int r;
     while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
-        int stmt_id = sqlite3_column_int(stmt, 0);
-        int *id = malloc(sizeof(int));
-        *id = stmt_id;
+        int stmt_id          = sqlite3_column_int(stmt, 0);
+        int *id              = malloc(sizeof(int));
+        *id                  = stmt_id;
         const char *filename = (const char *)sqlite3_column_text(stmt, 1);
-        list = ufa_list_append(list, ufa_strdup(filename));
-        file_ids = ufa_list_append(file_ids, id);
+        list                 = ufa_list_append(list, ufa_strdup(filename));
+        file_ids             = ufa_list_append(file_ids, id);
     }
 
     // for the files selected get all tags that are not in list 'tags'
@@ -279,8 +295,7 @@ _get_files_with_tags(ufa_list_t *tags, ufa_error_t **error)
         goto end;
     }
 
-    if (list && other_tags) {
-        /* concatenate lists */
+    if (list && other_tags) { // concatenate lists
         ufa_list_get_last(list)->next = other_tags;
     }
     result = list;
@@ -298,8 +313,7 @@ static sqlite_int64
 _insert_tag(const char *tag)
 {
     sqlite_int64 id_tag = -1;
-
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt *stmt  = NULL;
 
     char *sql_insert = "INSERT INTO tag (name) values(?)";
     if (!db_prepare(&stmt, sql_insert, NULL)) {
@@ -321,13 +335,13 @@ end:
 
 
 static int
-_get_file_id_by_name(const char *filename)
+_get_file_id_by_name(const char *filename, ufa_error_t **error)
 {
-    int file_id = -1;
-    char *sql = "SELECT f.id FROM file f WHERE f.name = ?";
-    
+    int file_id = 0;
+    char *sql   = "SELECT f.id FROM file f WHERE f.name = ?";
+
     sqlite3_stmt *stmt = NULL;
-    if (!db_prepare(&stmt, sql, NULL)) {
+    if (!db_prepare(&stmt, sql, error)) {
         file_id = -1;
         goto end;
     }
@@ -337,7 +351,6 @@ _get_file_id_by_name(const char *filename)
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         file_id = sqlite3_column_int(stmt, 0);
     }
-
 end:
     sqlite3_finalize(stmt);
     return file_id;
@@ -345,14 +358,13 @@ end:
 
 
 static bool
-_set_tag_on_file(int file_id, int tag_id)
+_set_tag_on_file(int file_id, int tag_id, ufa_error_t **error)
 {
-    bool status = false;
-
+    bool status      = false;
     char *sql_insert = "INSERT INTO file_tag (id_file, id_tag) VALUES (?, ?)";
 
     sqlite3_stmt *stmt = NULL;
-    if (!db_prepare(&stmt, sql_insert, NULL)) {
+    if (!db_prepare(&stmt, sql_insert, error)) {
         goto end;
     }
 
@@ -367,6 +379,9 @@ _set_tag_on_file(int file_id, int tag_id)
     } else if (r == SQLITE_DONE) {
         status = true;
         ufa_debug("file tagged");
+    } else {
+        ufa_error_set(error, UFA_ERROR_DATABASE, "sqlite returned on insert file_tag: %d", r);
+        goto end;
     }
 end:
     sqlite3_finalize(stmt);
@@ -388,7 +403,7 @@ ufa_repo_init(const char *repository, ufa_error_t **error)
     repository_path = ufa_strdup(repository);
     char *filepath = ufa_util_join_path(2, repository_path, REPOSITORY_FILENAME);
     ufa_debug("Initializing repo %s", filepath);
-    conn = _open_sqlite_conn(filepath);
+    conn = _open_sqlite_conn(filepath, error);
     free(filepath);
     return true;
 }
@@ -409,11 +424,10 @@ ufa_get_all_tags(ufa_error_t **error)
         goto sqlite_error;
     }
 
-    int i;
-    for (i = columns; i < (rows + 1) * columns;) {
+    for (int i = columns; i < (rows + 1) * columns;) {
         // first line is column headers, so we add +1
         char *tag = ufa_strdup(result_sql[i++]);
-        all_tags = ufa_list_append(all_tags, tag);
+        all_tags  = ufa_list_append(all_tags, tag);
     }
 
     sqlite3_free(sql);
@@ -421,7 +435,6 @@ ufa_get_all_tags(ufa_error_t **error)
 
     return ufa_list_get_first(all_tags);
 
-    /* error handling */
 sqlite_error:
     if (all_tags) {
         ufa_list_t *head = ufa_list_get_first(all_tags);
@@ -435,16 +448,17 @@ sqlite_error:
 }
 
 
+/**
+ * Checks whether a path is a tag.
+ * E.g.: tag1/tag2/tag3 or tag1/tag2/file.
+ */
 bool
 ufa_repo_is_a_tag(const char *path, ufa_error_t **error)
 {
-    ufa_list_t *split = ufa_util_str_split(path, "/");
-    ufa_list_t *last  = ufa_list_get_last(split);
-    char *last_part   = (char *)last->data;
-    /* e.g.: tag1/tag2/tag3 or tag1/tag2/file. */
-    bool ret
-        = (ufa_repo_get_file_path(path, NULL) == NULL && _get_tag_id_by_name(last_part, error) > 0);
-    ufa_list_free_full(split, free);
+    char *last_part = _get_filename(path);
+    bool ret = (ufa_repo_get_file_path(path, NULL) == NULL && 
+                _get_tag_id_by_name(last_part, error) > 0);
+    free(last_part);
     return ret;
 }
 
@@ -453,25 +467,19 @@ char *
 ufa_repo_get_file_path(const char *path, ufa_error_t **error)
 {
     /* FIXME remove error? */
-    ufa_list_t *split = ufa_util_str_split(path, "/");
-    ufa_list_t *last = ufa_list_get_last(split);
-    char *last_part = (char *)last->data;
-
-    char *filepath;
-    filepath = (char *)calloc(
-        strlen(repository_path) + strlen("/") + strlen(last->data) + 1, sizeof *filepath);
-    strcpy(filepath, repository_path);
-    strcat(filepath, "/");
-    strcat(filepath, last_part);
+    char *result    = NULL;
+    char *last_part = _get_filename(path);
+    char *filepath  = ufa_str_sprintf("%s%s%s", repository_path, UFA_FILE_SEPARATOR, last_part);
 
     if (ufa_util_isfile(filepath)) {
-        ufa_list_free_full(split, free);
-        return filepath;
+        result = filepath;
     } else {
         free(filepath);
-        ufa_list_free_full(split, free);
-        return NULL;
+        result = NULL;
     }
+
+    free(last_part);
+    return result;
 }
 
 
@@ -493,10 +501,10 @@ ufa_repo_list_files_for_dir(const char *path, ufa_error_t** error)
 
 
 /* TODO use error argument and returns the list */
-int
-ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list)
+bool
+ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list, ufa_error_t **error)
 {
-    int ret = 0;
+    bool status = true;
 
     /* TODO check if file exist */
     char *filename = _get_filename(filepath);
@@ -505,8 +513,8 @@ ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list)
                 "and ft.id_tag = t.id and f.name=? ORDER BY t.name";
 
     sqlite3_stmt *stmt = NULL;
-    if (!db_prepare(&stmt, sql, NULL)) {
-        ret = -1;
+    if (!db_prepare(&stmt, sql, error)) {
+        status = false;
         goto end;
     }
     
@@ -519,20 +527,22 @@ ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list)
 end:
     sqlite3_finalize(stmt);
     free(filename);
-    return ret;
+    return status;
 }
 
-
+/**
+ * Negative values on error 
+ */
 int
-ufa_repo_insert_tag(const char *tag)
+ufa_repo_insert_tag(const char *tag, ufa_error_t **error)
 {
-    int tag_id = _get_tag_id_by_name(tag, NULL);
+    int tag_id         = _get_tag_id_by_name(tag, error);
     sqlite3_stmt *stmt = NULL;
 
     if (tag_id == 0) {
         ufa_debug("tag '%s' does not exist. Inserting tag ...\n", tag);
         tag_id = _insert_tag(tag);
-    } else {
+    } else if (tag_id > 0) {
         ufa_debug("Tag '%s' already exist\n", tag);
     }
 
@@ -542,30 +552,27 @@ ufa_repo_insert_tag(const char *tag)
 
 
 bool
-ufa_repo_set_tag_on_file(const char *filepath, const char *tag)
+ufa_repo_set_tag_on_file(const char *filepath, const char *tag, ufa_error_t **error)
 {
     ufa_debug("Setting tag '%s' for file '%s'", tag, filepath);
 
     bool status    = false;
     char *filename = _get_filename(filepath);
 
-    int tag_id = ufa_repo_insert_tag(tag);
-    if (tag_id == -1) {
-        fprintf(stderr, "error getting tag '%s'\n", tag);
+    int tag_id = ufa_repo_insert_tag(tag, error);
+    if (tag_id < 0) {
         goto end;
     }
 
-    int file_id = _get_file_id_by_name(filename);
-    if (file_id == -1) {
-        fprintf(stderr, "file '%s' does not exist\n", filepath);
+    int file_id = _get_file_id_by_name(filename, error);
+    if (file_id < 0) {
+        goto end;
+    } else if (file_id == 0) {
+        ufa_error_set(error, UFA_ERROR_STATE, "file '%s' does not exist", filepath);
         goto end;
     }
 
-    status = _set_tag_on_file(file_id, tag_id);
-    if (!status) {
-        fprintf(stderr, "error setting tag '%s' on file '%s'", tag, filepath);
-    }
-
+    status = _set_tag_on_file(file_id, tag_id, error);
 end:
     free(filename);
     return status;
@@ -573,16 +580,18 @@ end:
 
 
 bool
-ufa_repo_clear_tags_for_file(const char *filepath)
+ufa_repo_clear_tags_for_file(const char *filepath, ufa_error_t **error)
 {
     int r              = 0;
     bool status        = false;
     sqlite3_stmt *stmt = NULL;
     char *sql          = "DELETE FROM file_tag WHERE id_file=?";
 
-    int file_id = _get_file_id_by_name(filepath);
-    if (file_id == -1) {
-        fprintf(stderr, "file '%s' does not exist\n", filepath);
+    int file_id = _get_file_id_by_name(filepath, error);
+    if (file_id < 0) {
+        goto end;
+    } else if (file_id == 0) {
+        ufa_error_set(error, UFA_ERROR_STATE, "file '%s' does not exist", filepath);
         goto end;
     }
     
@@ -605,30 +614,27 @@ end:
 
 
 bool
-ufa_repo_unset_tag_on_file(const char *filepath, const char *tag)
+ufa_repo_unset_tag_on_file(const char *filepath, const char *tag, ufa_error_t **error)
 {
-    int r              = 0;
     bool status        = 0;
     sqlite3_stmt *stmt = NULL;
     char *sql_delete   = "DELETE FROM file_tag WHERE id_file = ? AND id_tag = (SELECT t.id FROM tag"
                          " t WHERE t.name = ?)";
 
-    int file_id = _get_file_id_by_name(filepath);
+    int file_id = _get_file_id_by_name(filepath, error);
     if (file_id == -1) {
         fprintf(stderr, "file '%s' does not exist\n", filepath);
         goto end;
     }
     
-    if (!db_prepare(&stmt, sql_delete, NULL)) {
+    if (!db_prepare(&stmt, sql_delete, error)) {
         goto end;
     }
 
     sqlite3_bind_int(stmt, 1, file_id);
     sqlite3_bind_text(stmt, 2, tag, -1, NULL);
 
-    r = sqlite3_step(stmt);
-    if (r != SQLITE_DONE) {
-        fprintf(stderr, "sqlite error: %d\n", r);
+    if (!db_execute(stmt, error)) {
         goto end;
     }
 

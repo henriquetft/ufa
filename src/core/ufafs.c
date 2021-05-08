@@ -117,7 +117,7 @@ ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 
     ufa_error_t *error = NULL;
     ufa_list_t *list = ufa_repo_list_files_for_dir(path, &error);
-    abort_on_error(error);
+    ufa_error_abort(error);
     ufa_list_t *head = list;
 
     for (; (list != NULL); list = list->next) {
@@ -184,7 +184,9 @@ int ufa_fuse_mkdir(const char *path, mode_t mode)
         ufa_list_t *split = ufa_util_str_split(path, "/");
         ufa_list_t *last = ufa_list_get_last(split);
         char *last_part = (char *)last->data;
-        int r = ufa_repo_insert_tag(last_part);
+        ufa_error_t *error;
+        int r = ufa_repo_insert_tag(last_part, &error);
+        ufa_error_abort(error);
         ufa_list_free_full(split, free);
         if (r == 0) {
             return -EEXIST;

@@ -16,6 +16,12 @@ void
 ufa_error_free(ufa_error_t *error);
 
 void
-abort_on_error(ufa_error_t *error);
+ufa_error_abort(ufa_error_t *error);
+
+void
+ufa_error_print(ufa_error_t *error);
+
+void
+ufa_error_print_and_free(ufa_error_t *error);
 
 #endif /* UFA_ERROR_H_ */

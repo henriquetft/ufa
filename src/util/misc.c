@@ -78,11 +78,9 @@ char *
 ufa_util_join_path(int args, const char *first_element, ...)
 {
     va_list ap;
-
     va_start(ap, first_element);
     /* TODO use the default file separator */
     char *str = _join_path(UFA_FILE_SEPARATOR, first_element, args, &ap);
-
     va_end(ap);
 
     return str;
@@ -93,10 +91,8 @@ char *
 ufa_util_join_str(char *delim, int args, const char *first_element, ...)
 {
     va_list ap;
-
     va_start(ap, first_element);
     char *str = _join_path(delim, first_element, args, &ap);
-
     va_end(ap);
 
     return str;
@@ -109,7 +105,6 @@ ufa_util_str_split(const char *str, const char *delim)
     ufa_list_t *list = NULL;
 
     char *s = ufa_strdup(str);
-
     char *ptr = strtok(s, delim);
 
     while (ptr != NULL) {
@@ -219,6 +214,7 @@ ufa_str_vprintf(char const *format, va_list ap)
     vsprintf(buffer, format, args2);
     return buffer;
 }
+
 
 char *
 ufa_str_sprintf(char const *format, ...)

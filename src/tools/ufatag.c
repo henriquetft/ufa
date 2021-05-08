@@ -25,16 +25,13 @@ static void
 print_usage(FILE *stream);
 
 static void
-print_usage(FILE *stream);
+print_usage_set(FILE *stream);
 
 static void
 print_usage_unset(FILE *stream);
 
 static void
 print_usage_list(FILE *stream);
-
-static void
-print_usage_set(FILE *stream);
 
 static void
 print_usage_clear(FILE *stream);
@@ -96,6 +93,7 @@ static handle_command_f handle_commands[] = { handle_set,
 /* IMPLEMENTATION                                                                                 */
 /* ============================================================================================== */
 
+
 static void
 print_usage(FILE *stream)
 {
@@ -118,6 +116,13 @@ print_usage(FILE *stream)
 }
 
 static void
+print_usage_set(FILE *stream)
+{
+    printf("\nUsage:  %s set FILE TAG\n", program_name);
+    printf("\nSet tags on file\n\n");
+}
+
+static void
 print_usage_unset(FILE *stream)
 {
     printf("\nUsage:  %s unset FILE TAG\n", program_name);
@@ -132,57 +137,10 @@ print_usage_list(FILE *stream)
 }
 
 static void
-print_usage_set(FILE *stream)
-{
-    printf("\nUsage:  %s set FILE TAG\n", program_name);
-    printf("\nSet tags on file\n\n");
-}
-
-static void
 print_usage_clear(FILE *stream)
 {
     printf("\nUsage:  %s clear FILE\n", program_name);
     printf("\nUnset all tags on file\n\n");
-}
-
-/** remove tag from a file */
-static int
-handle_unset()
-{
-    if (!HAS_MORE_ARGS(2)) {
-        print_usage_unset(stderr);
-        return EX_USAGE;
-    }
-
-    char *file = NEXT_ARG;
-    char *tag = NEXT_ARG;
-
-    bool ret = ufa_repo_unset_tag_on_file(file, tag);
-    return ret ? EX_OK : EXIT_FAILURE;
-}
-
-
-/* print all tags of a file */
-static int
-handle_list()
-{
-    if (!HAS_NEXT_ARG) {
-        print_usage_list(stderr);
-        return EX_USAGE;
-    }
-
-    char *arg = NEXT_ARG;
-
-    /* FIXME must fail if file does not exist */
-    ufa_list_t *list = NULL;
-    int ret = ufa_repo_get_tags_for_file(arg, &list);
-
-    for (UFA_LIST_EACH(iter, list)) {
-        printf("%s\n", (char *)iter->data);
-    }
-    ufa_list_free_full(list, free);
-
-    return ret >= 0 ? EX_OK : EXIT_FAILURE;
 }
 
 
@@ -198,8 +156,60 @@ handle_set()
     char *file = NEXT_ARG;
     char *new_tag = NEXT_ARG;
 
-    bool ret = ufa_repo_set_tag_on_file(file, new_tag);
-    return ret ? EX_OK : EXIT_FAILURE;
+    ufa_error_t *error = NULL;
+    bool is_ok         = ufa_repo_set_tag_on_file(file, new_tag, &error);
+    ufa_error_print_and_free(error);
+    return is_ok ? EX_OK : EXIT_FAILURE;
+}
+
+
+/** remove tag from a file */
+static int
+handle_unset()
+{
+    if (!HAS_MORE_ARGS(2)) {
+        print_usage_unset(stderr);
+        return EX_USAGE;
+    }
+
+    char *file = NEXT_ARG;
+    char *tag = NEXT_ARG;
+
+    ufa_error_t *error = NULL;
+    bool is_ok         = ufa_repo_unset_tag_on_file(file, tag, &error);
+    ufa_error_print_and_free(error);
+    return is_ok ? EX_OK : EXIT_FAILURE;
+}
+
+
+/* print all tags of a file */
+static int
+handle_list()
+{
+    if (!HAS_NEXT_ARG) {
+        print_usage_list(stderr);
+        return EX_USAGE;
+    }
+
+    char *arg = NEXT_ARG;
+
+    /* FIXME must fail if file does not exist */
+    ufa_list_t *list   = NULL;
+    ufa_error_t *error = NULL;
+    bool is_ok         = ufa_repo_get_tags_for_file(arg, &list, &error);
+    int ret;
+
+    if (is_ok) {
+        for (UFA_LIST_EACH(iter, list)) {
+            printf("%s\n", (char *)iter->data);
+        }
+        ufa_list_free_full(list, free);
+        ret = EX_OK;
+    } else {
+        ret = EXIT_FAILURE;
+        ufa_error_print_and_free(error);
+    }
+    return ret;
 }
 
 
@@ -217,8 +227,10 @@ handle_clear()
 
     char *file = NEXT_ARG;
 
-    bool ret = ufa_repo_clear_tags_for_file(file);
-    return ret ? EX_OK : EXIT_FAILURE;
+    ufa_error_t *error = NULL;
+    bool is_ok         = ufa_repo_clear_tags_for_file(file, &error);
+    ufa_error_print_and_free(error);
+    return is_ok ? EX_OK : EXIT_FAILURE;
 }
 
 
@@ -323,8 +335,7 @@ main(int argc, char *argv[])
 
     ufa_error_t *err = NULL;
     if (!ufa_repo_init(repository, &err)) {
-        fprintf(stderr, "%s\n", err->message);
-        ufa_error_free(err);
+        ufa_error_print_and_free(err);
         free(repository);
         return 1;
     }
