@@ -89,6 +89,7 @@ ufa_fuse_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi
 
     /* it is a file */
     } else if ((filepath = ufa_repo_get_file_path(path, NULL)) != NULL) {
+        ufa_debug(".copying stat from: '%s'", filepath);
         struct stat st;
         stat(filepath, &st);
         copy_stat(stbuf, &st);
@@ -144,7 +145,6 @@ ufa_fuse_open(const char *path, struct fuse_file_info *fi)
     ufa_debug("open: '%s' ---> '%s'\n", path, ufa_repo_get_file_path(path, NULL));
 
     if ((fi->flags & O_ACCMODE) != O_RDONLY) {
-        printf("ok\n");
         return -EACCES;
     }
 
@@ -163,9 +163,9 @@ ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fus
     int res = 0;
     int f = open(filepath, O_RDONLY);
 
-    if (f) {
+    if (f != -1) {
         res = pread(f, buf, size, offset);
-        if (res) {
+        if (res == -1) {
             ufa_warn("Error reading file '%s': %s", filepath, strerror(errno));
         }
         close(f);

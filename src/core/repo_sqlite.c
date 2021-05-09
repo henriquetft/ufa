@@ -259,12 +259,16 @@ _get_files_with_tags(ufa_list_t *tags, ufa_error_t **error)
     ufa_list_t *list     = NULL;
     ufa_list_t *result   = NULL;
     ufa_list_t *file_ids = NULL;
-
+    
+    int size = ufa_list_size(tags);
+    if (size == 0) {
+        return NULL;
+    }
     char *sql_args = _sql_arg_list(tags);
-    char *full_sql
-        = ufa_str_sprintf("SELECT DISTINCT f.id,f.name FROM tag t, file_tag ft, file f WHERE "
-                          "ft.id_tag = t.id AND f.id = ft.id_file AND t.name IN (%s)",
-                          sql_args);
+    char *full_sql = ufa_str_sprintf(
+        "SELECT id_file,(SELECT name FROM file WHERE id=id_file) FROM file_tag ft,tag t WHERE "
+        "t.name IN (%s) AND id_tag = t.id GROUP BY id_file HAVING COUNT(id_file) = ?",
+        sql_args);
 
     ufa_debug("Executing query: %s", full_sql);
 
@@ -277,6 +281,7 @@ _get_files_with_tags(ufa_list_t *tags, ufa_error_t **error)
     for (UFA_LIST_EACH(iter_tags, tags)) {
         sqlite3_bind_text(stmt, x++, (char *)iter_tags->data, -1, NULL);
     }
+    sqlite3_bind_int(stmt, x++, size);
 
     int r;
     while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -335,10 +340,34 @@ end:
 
 
 static int
+_insert_file(const char *filename, ufa_error_t **error)
+{
+    sqlite_int64 id_file = -1;
+    sqlite3_stmt *stmt   = NULL;
+    char *sql_insert     = "INSERT INTO file (name) values(?)";
+    if (!db_prepare(&stmt, sql_insert, error)) {
+        goto end;
+    }
+
+    sqlite3_bind_text(stmt, 1, filename, -1, NULL);
+    int r = sqlite3_step(stmt);
+    if (r != SQLITE_DONE) {
+        fprintf(stderr, "sqlite error: %d\n", r);
+        goto end;
+    }
+    id_file = sqlite3_last_insert_rowid(conn->db);
+    ufa_debug("File inserted: %lld\n", id_file);
+end:
+    sqlite3_finalize(stmt);
+    return id_file;
+}
+
+static int
 _get_file_id_by_name(const char *filename, ufa_error_t **error)
 {
-    int file_id = 0;
-    char *sql   = "SELECT f.id FROM file f WHERE f.name = ?";
+    char *filepath = NULL;
+    int file_id    = 0;
+    char *sql      = "SELECT f.id FROM file f WHERE f.name = ?";
 
     sqlite3_stmt *stmt = NULL;
     if (!db_prepare(&stmt, sql, error)) {
@@ -351,7 +380,19 @@ _get_file_id_by_name(const char *filename, ufa_error_t **error)
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         file_id = sqlite3_column_int(stmt, 0);
     }
+
+    if (!file_id) {
+        filepath = ufa_util_join_path(2, repository_path, filename);
+        if (ufa_util_isfile(filepath)) {
+            ufa_debug("File '%s' needs to be inserted on file table", filename);
+            file_id = _insert_file(filename, error);
+            if (file_id == -1) {
+                goto end;
+            }
+        }
+    }
 end:
+    free(filepath);
     sqlite3_finalize(stmt);
     return file_id;
 }
