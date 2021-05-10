@@ -3,6 +3,6 @@
 
 int main(int argc, char* argv[])
 {
-	puts("set tags on files");
+	puts("set attributes on files");
 	return 0;
 }

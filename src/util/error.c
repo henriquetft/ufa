@@ -20,7 +20,6 @@ ufa_error_set(ufa_error_t **error, int code, char *message, ...)
     *error = err;
 }
 
-
 void
 ufa_error_free(ufa_error_t *error)
 {
@@ -46,7 +45,6 @@ ufa_error_print(ufa_error_t *error)
         fprintf(stderr, "error: %s\n", error->message);
     }
 }
-
 
 void
 ufa_error_print_and_free(ufa_error_t *error)

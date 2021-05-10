@@ -115,22 +115,6 @@ _sql_arg_list(ufa_list_t *list)
 
 
 /**
- * Returns the file name of a file path.
- * It returns a newly allocated string with the last part of the path
- * (separated by file separador).
- */
-static char *
-_get_filename(const char *filepath)
-{
-    ufa_list_t *split = ufa_util_str_split(filepath, UFA_FILE_SEPARATOR);
-    ufa_list_t *last  = ufa_list_get_last(split);
-    char *last_part   = ufa_strdup((char *)last->data);
-    ufa_list_free_full(split, free);
-    return last_part;
-}
-
-
-/**
  * Attempts to establish a connection to sqlite repository.
  * Returns the ufa_repo_conn_t or NULL on error. 
  */
@@ -434,6 +418,22 @@ end:
 /* FUNCTIONS FROM repo.h                                                                          */
 /* ============================================================================================== */
 
+/**
+ * Returns the file name of a file path.
+ * It returns a newly allocated string with the last part of the path
+ * (separated by file separador).
+ */
+char *
+ufa_repo_get_filename(const char *filepath)
+{
+    ufa_list_t *split = ufa_util_str_split(filepath, UFA_FILE_SEPARATOR);
+    ufa_list_t *last  = ufa_list_get_last(split);
+    char *last_part   = ufa_strdup((char *)last->data);
+    ufa_list_free_full(split, free);
+    return last_part;
+}
+
+
 bool
 ufa_repo_init(const char *repository, ufa_error_t **error)
 {
@@ -496,7 +496,7 @@ sqlite_error:
 bool
 ufa_repo_is_a_tag(const char *path, ufa_error_t **error)
 {
-    char *last_part = _get_filename(path);
+    char *last_part = ufa_repo_get_filename(path);
     bool ret = (ufa_repo_get_file_path(path, NULL) == NULL && 
                 _get_tag_id_by_name(last_part, error) > 0);
     free(last_part);
@@ -509,7 +509,7 @@ ufa_repo_get_file_path(const char *path, ufa_error_t **error)
 {
     /* FIXME remove error? */
     char *result    = NULL;
-    char *last_part = _get_filename(path);
+    char *last_part = ufa_repo_get_filename(path);
     char *filepath  = ufa_str_sprintf("%s%s%s", repository_path, UFA_FILE_SEPARATOR, last_part);
 
     if (ufa_util_isfile(filepath)) {
@@ -548,7 +548,7 @@ ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list, ufa_error_t 
     bool status = true;
 
     /* TODO check if file exist */
-    char *filename = _get_filename(filepath);
+    char *filename = ufa_repo_get_filename(filepath);
     ufa_debug("Listing tags for filename: %s (%s)", filename, filepath);
     char *sql = "SELECT DISTINCT t.name FROM file f , file_tag ft, tag t where f.id = ft.id_file "
                 "and ft.id_tag = t.id and f.name=? ORDER BY t.name";
@@ -598,7 +598,7 @@ ufa_repo_set_tag_on_file(const char *filepath, const char *tag, ufa_error_t **er
     ufa_debug("Setting tag '%s' for file '%s'", tag, filepath);
 
     bool status    = false;
-    char *filename = _get_filename(filepath);
+    char *filename = ufa_repo_get_filename(filepath);
 
     int tag_id = ufa_repo_insert_tag(tag, error);
     if (tag_id < 0) {

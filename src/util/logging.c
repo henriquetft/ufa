@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "util/logging.h"
 
-static int loglevel = DEBUG;
+static int loglevel = LOG_OFF;
 
 char *
 ufa_log_level_to_str(ufa_log_level_t level)

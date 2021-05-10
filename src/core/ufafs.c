@@ -26,8 +26,45 @@
 #include "core/repo.h"
 
 
-static struct stat stat_repository;
+/* ============================================================================================== */
+/* FUSE FUNCTIONS -- DECLARATION                                                                  */
+/* ============================================================================================== */
 
+static void *
+ufa_fuse_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
+
+static int
+ufa_fuse_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi);
+
+static int
+ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
+    struct fuse_file_info *fi, enum fuse_readdir_flags flags);
+    
+static int
+ufa_fuse_open(const char *path, struct fuse_file_info *fi);
+
+static int
+ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
+
+int
+ufa_fuse_mkdir(const char *path, mode_t mode);
+
+
+/* Mapping File system operations */
+static const struct fuse_operations ufa_fuse_oper = {
+    .init    = ufa_fuse_init,
+    .getattr = ufa_fuse_getattr,
+    .readdir = ufa_fuse_readdir,
+    .open    = ufa_fuse_open,
+    .read    = ufa_fuse_read,
+    .mkdir   = ufa_fuse_mkdir,
+};
+
+/* ============================================================================================== */
+/* VARIABLES AND DEFINITIONS                                                                      */
+/* ============================================================================================== */
+
+/* Command-line options data */
 static struct options {
     const char *repository;
     int show_help;
@@ -37,12 +74,24 @@ static struct options {
     {                                                                                              \
         t, offsetof(struct options, p), 1                                                          \
     }
-static const struct fuse_opt option_spec[] = { OPTION("--repository=%s", repository),
-    OPTION("-h", show_help), OPTION("--help", show_help), FUSE_OPT_END };
 
+/* File attributes about repository path */
+static struct stat stat_repository;
+
+/* Command-line options */
+static const struct fuse_opt option_spec[] = { 
+    OPTION("--repository=%s", repository),
+    OPTION("-h", show_help),
+    OPTION("--help", show_help),
+    FUSE_OPT_END
+};
+
+/* ============================================================================================== */
+/* AUXILIARY FUNCTIONS                                                                            */
+/* ============================================================================================== */
 
 static void
-show_help(const char *progname)
+_show_help(const char *progname)
 {
     printf("usage: %s [options] <mountpoint>\n\n", progname);
     printf("File-system specific options:\n"
@@ -50,15 +99,8 @@ show_help(const char *progname)
            "\n");
 }
 
-static void *
-ufa_fuse_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
-{
-    cfg->kernel_cache = 1;
-    return NULL;
-}
-
 static void
-copy_stat(struct stat *dest, struct stat *src)
+_copy_stat(struct stat *dest, struct stat *src)
 {
     dest->st_dev     = src->st_dev;
     dest->st_ino     = src->st_ino;
@@ -75,35 +117,47 @@ copy_stat(struct stat *dest, struct stat *src)
     dest->st_mtime   = src->st_mtime;
 }
 
+
+/* ============================================================================================== */
+/* FUSE FUNCTIONS -- IMPLEMENTATION                                                               */
+/* ============================================================================================== */
+
+static void *
+ufa_fuse_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
+{
+    cfg->kernel_cache = 1;
+    return NULL;
+}
+
+
 static int
 ufa_fuse_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
 {
     ufa_debug("getattr: '%s'", path);
+
     char *filepath = NULL;
-    int res = 0;
+    int res        = 0;
     memset(stbuf, 0, sizeof(struct stat));
 
-    /* IS ROOT */
+    /* ROOT DIR */
     if (ufa_util_strequals(path, "/")) {
-        copy_stat(stbuf, &stat_repository);
+        _copy_stat(stbuf, &stat_repository);
 
-    /* it is a file */
+    /* A FILE */
     } else if ((filepath = ufa_repo_get_file_path(path, NULL)) != NULL) {
         ufa_debug(".copying stat from: '%s'", filepath);
         struct stat st;
         stat(filepath, &st);
-        copy_stat(stbuf, &st);
+        _copy_stat(stbuf, &st);
 
-    /* it is another tag */;
+    /* ANOTHER TAG */;
     } else if (ufa_repo_is_a_tag(path, NULL)) {
-        copy_stat(stbuf, &stat_repository);
+        _copy_stat(stbuf, &stat_repository);
     } else {
         res = -ENOENT;
     }
 
-    if (filepath) {
-        free(filepath);
-    }
+    free(filepath);
     return res;
 }
 
@@ -113,29 +167,31 @@ ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
     struct fuse_file_info *fi, enum fuse_readdir_flags flags)
 {
     ufa_debug("readdir: '%s'", path);
+
+    int res = 0;
     filler(buf, ".", NULL, 0, 0);
     filler(buf, "..", NULL, 0, 0);
 
     ufa_error_t *error = NULL;
-    ufa_list_t *list = ufa_repo_list_files_for_dir(path, &error);
+    ufa_list_t *list   = ufa_repo_list_files_for_dir(path, &error);
     ufa_error_abort(error);
-    ufa_list_t *head = list;
 
-    for (; (list != NULL); list = list->next) {
-        ufa_debug("...listing '%s'", (char *)list->data);
-        int r = filler(buf, list->data, NULL, 0, 0);
+    for (UFA_LIST_EACH(iter, list)) {
+        ufa_debug("...listing '%s'", (char *)iter->data);
+        int r = filler(buf, iter->data, NULL, 0, 0);
         if (r != 0) {
-            return -ENOMEM;
+            res = -ENOMEM;
+            break;
         }
     }
 
-    if (head) {
-        ufa_list_free_full(head, free);
+    if (list) {
+        ufa_list_free_full(list, free);
     } else {
-        return -ENOENT;
+        res = -ENOENT;
     }
 
-    return 0;
+    return res;
 }
 
 
@@ -156,12 +212,12 @@ ufa_fuse_open(const char *path, struct fuse_file_info *fi)
 static int
 ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    /* ex: /tag1/arquivo_real.txt */
+    /* e.g.: /tag1/real_file.txt */
     char *filepath = ufa_repo_get_file_path(path, NULL);
     ufa_debug("read: %s ---> %s (%ld / %lu)", path, filepath, offset, size);
 
     int res = 0;
-    int f = open(filepath, O_RDONLY);
+    int f   = open(filepath, O_RDONLY);
 
     if (f != -1) {
         res = pread(f, buf, size, offset);
@@ -177,38 +233,26 @@ ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fus
 }
 
 
-int ufa_fuse_mkdir(const char *path, mode_t mode)
+int
+ufa_fuse_mkdir(const char *path, mode_t mode)
 {
     ufa_debug("mkdir: %s", path);
     if (ufa_util_str_startswith(path, "/") && ufa_util_strcount(path, "/") == 1) {
-        ufa_list_t *split = ufa_util_str_split(path, "/");
-        ufa_list_t *last = ufa_list_get_last(split);
-        char *last_part = (char *)last->data;
-        ufa_error_t *error;
-        int r = ufa_repo_insert_tag(last_part, &error);
+        char *last_part    = ufa_repo_get_filename(path);
+        ufa_error_t *error = NULL;
+        int r              = ufa_repo_insert_tag(last_part, &error);
+        free(last_part);
         ufa_error_abort(error);
-        ufa_list_free_full(split, free);
         if (r == 0) {
             return -EEXIST;
         } else if (r < 0) {
             return -ENOTDIR;
         }
         return 0;
-        //-EEXIST
     } else {
         return -ENOTDIR;
     }
 }
-
-
-static const struct fuse_operations ufa_fuse_oper = {
-    .init    = ufa_fuse_init,
-    .getattr = ufa_fuse_getattr,
-    .readdir = ufa_fuse_readdir,
-    .open    = ufa_fuse_open,
-    .read    = ufa_fuse_read,
-    .mkdir   = ufa_fuse_mkdir,
-};
 
 
 
@@ -230,7 +274,7 @@ main(int argc, char *argv[])
     }
 
     if (options.show_help) {
-        show_help(argv[0]);
+        _show_help(argv[0]);
         fuse_opt_add_arg(&args, "--help");
         args.argv[0][0] = '\0';
     }

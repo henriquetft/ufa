@@ -15,6 +15,8 @@ typedef enum
 } ufa_repo_error_t;
 
 
+char *
+ufa_repo_get_filename(const char *filepath);
 
 bool
 ufa_repo_init(const char *repository, ufa_error_t **error);
