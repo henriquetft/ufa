@@ -118,6 +118,7 @@ print_usage(FILE *stream)
         "  unset\t\tUnset tags on file\n"
         "  list\t\tList the tags on file\n"
         "  clear\t\tUnset all tags on file\n"
+        "  list-all\tList all tags\n"
         "\n"
         "Run '%s COMMAND -h' for more information on a command.\n"
         "\n", program_name);
