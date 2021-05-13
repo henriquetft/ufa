@@ -52,6 +52,7 @@
 ");"
 
 #define REPOSITORY_FILENAME "repo.sqlite"
+#define REPOSITORY_INDICATOR_FILE_NAME ".ufarepo"
 #define db_prepare(stmt, sql, error) _db_prepare(stmt, sql, error, __func__)
 #define db_execute(stmt, error) _db_execute(stmt, error, __func__)
 
@@ -209,7 +210,7 @@ _get_tags_for_files_excluding(ufa_list_t *file_ids, ufa_list_t *tags, ufa_error_
     char *full_sql      = ufa_str_sprintf(sql, sql_file_args, sql_tags_args);
     ufa_debug("Query: %s", full_sql);
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt *stmt = NULL;
     if (!db_prepare(&stmt, full_sql, error)) {
         goto end;
     }
@@ -256,7 +257,7 @@ _get_files_with_tags(ufa_list_t *tags, ufa_error_t **error)
 
     ufa_debug("Executing query: %s", full_sql);
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt *stmt = NULL;
     if (!db_prepare(&stmt, full_sql, error)) {
         goto end;
     }
@@ -413,6 +414,16 @@ end:
     return status;
 }
 
+static void
+_create_repo_indicator_file(char *repository)
+{
+    char *filepath = ufa_util_join_path(2, repository, REPOSITORY_INDICATOR_FILE_NAME);
+    ufa_debug("Writting %s file", filepath);
+    FILE *fp = fopen(filepath, "w");
+    
+    fprintf(fp, "%s", repository);
+    fclose(fp);
+}
 
 /* ============================================================================================== */
 /* FUNCTIONS FROM repo.h                                                                          */
@@ -445,6 +456,8 @@ ufa_repo_init(const char *repository, ufa_error_t **error)
     char *filepath = ufa_util_join_path(2, repository_path, REPOSITORY_FILENAME);
     ufa_debug("Initializing repo %s", filepath);
     conn = _open_sqlite_conn(filepath, error);
+    ufa_error_abort(error);
+    _create_repo_indicator_file(repository);
     free(filepath);
     return true;
 }
@@ -530,13 +543,15 @@ ufa_repo_list_files_for_dir(const char *path, ufa_error_t** error)
     ufa_list_t *list = NULL;
     if (ufa_util_strequals(path, "/")) {
         /* FIXME cache. it is better to clone all_tags */
-        return ufa_get_all_tags(error);
+        list = ufa_get_all_tags(error);
     } else {
         ufa_list_t *list_of_tags = ufa_util_str_split(path, "/");
         // get all files with tags
         list = _get_files_with_tags(list_of_tags, error);
         ufa_list_free_full(list_of_tags, free);
     }
+
+    list = ufa_list_append(list, ufa_strdup(REPOSITORY_INDICATOR_FILE_NAME));
     return list;
 }
 
