@@ -15,9 +15,9 @@ ufa_error_set(ufa_error_t **error, int code, char *message, ...)
     char *m = ufa_str_vprintf(message, ap);
     va_end(ap);
     ufa_error_t *err = malloc(sizeof *err);
-    err->code = code;
-    err->message = m;
-    *error = err;
+    err->code        = code;
+    err->message     = m;
+    *error           = err;
 }
 
 void
@@ -34,6 +34,7 @@ ufa_error_abort(ufa_error_t *error)
 {
     if (error != NULL) {
         fprintf(stderr, "error: %s\n", error->message);
+        fflush(stderr);
         abort();
     }
 }
