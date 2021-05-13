@@ -423,6 +423,7 @@ _create_repo_indicator_file(char *repository)
     
     fprintf(fp, "%s", repository);
     fclose(fp);
+    free(filepath);
 }
 
 /* ============================================================================================== */
@@ -456,7 +457,9 @@ ufa_repo_init(const char *repository, ufa_error_t **error)
     char *filepath = ufa_util_join_path(2, repository_path, REPOSITORY_FILENAME);
     ufa_debug("Initializing repo %s", filepath);
     conn = _open_sqlite_conn(filepath, error);
-    ufa_error_abort(error);
+    if (error != NULL) {
+        ufa_error_abort(*error);
+    }
     _create_repo_indicator_file(repository);
     free(filepath);
     return true;
