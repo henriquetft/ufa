@@ -21,7 +21,7 @@ fi
 
 UFATAG="./ufatag"
 if [ ! -f "$UFATAG" ]; then
-	UFATAG=ufatag
+	UFATAG=$(which ufatag)
 fi
 
 [ -f "$UFATAG" ] || {
