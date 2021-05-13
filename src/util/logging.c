@@ -1,59 +1,60 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "util/logging.h"
 
-static int loglevel = LOG_OFF;
+static int loglevel = UFA_LOG_DEBUG;
+
+#define IS_VALID_LOG_LEVEL(level) (level >= UFA_LOG_DEBUG && level <= UFA_LOG_FATAL)
+
+struct log_level_attrs_s {
+	const char *prefix_str;
+	const char *color;
+};
+
+static const struct log_level_attrs_s log_level_attr[5] = {
+    { "[DEBUG]:   ", "\033[0;34m", },
+    { "[INFO ]:   ", "\033[0;36m", },
+    { "[WARN ]:   ", "\033[0;33m", },
+    { "[ERROR]:   ", "\033[0;31m", },
+    { "[FATAL]:   ", "\033[0;31m", },
+};
+
 
 char *
 ufa_log_level_to_str(ufa_log_level_t level)
 {
-    switch (level) {
-    case DEBUG:
-        return "DEBUG";
-    case INFO:
-        return "INFO";
-    case WARN:
-        return "WARN";
-    case ERROR:
-        return "ERROR";
-    case FATAL:
-        return "FATAL";
-    default:
+    if (!IS_VALID_LOG_LEVEL(level)) {
         return NULL;
     }
+    return log_level_attr[level].prefix_str;
 }
 
-ufa_log_level_t
-ufa_log_str_to_level(char *level)
-{
-    if (!strcasecmp(level, "DEBUG")) {
-        return DEBUG;
-    } else if (!strcasecmp(level, "INFO")) {
-        return INFO;
-    } else if (!strcasecmp(level, "WARN")) {
-        return WARN;
-    } else if (!strcasecmp(level, "ERROR")) {
-        return ERROR;
-    } else if (!strcasecmp(level, "FATAL")) {
-        return FATAL;
-    } else {
-        return -1;
-    }
-}
 
 static void
 _ufa_log(ufa_log_level_t level, char *format, va_list ap)
 {
-    if (loglevel > level)
+    static int is_a_tty = -1;
+    if (is_a_tty == -1) {
+        is_a_tty = isatty(STDOUT_FILENO);
+    }
+
+    if (!IS_VALID_LOG_LEVEL(level)) {
         return;
+    }
 
     /* man 3 stdarg */
-
     FILE *file = stdout;
-
-    fprintf(file, "[LOG %s] ", ufa_log_level_to_str(level));
+	if (is_a_tty) {
+        fprintf(stdout, log_level_attr[level].color);
+    }
+    fprintf(file, "%s", ufa_log_level_to_str(level));
     vfprintf(file, format, ap);
     fprintf(file, "\n");
+
+	if (is_a_tty) {
+        printf("\033[0;0m");
+    }
 
     fflush(file);
 }
@@ -61,10 +62,10 @@ _ufa_log(ufa_log_level_t level, char *format, va_list ap)
 void
 ufa_debug(char *format, ...)
 {
-    if (loglevel <= DEBUG) {
+    if (loglevel <= UFA_LOG_DEBUG) {
         va_list ap;
         va_start(ap, format);
-        _ufa_log(DEBUG, format, ap);
+        _ufa_log(UFA_LOG_DEBUG, format, ap);
         va_end(ap);
     }
 }
@@ -72,10 +73,10 @@ ufa_debug(char *format, ...)
 void
 ufa_info(char *format, ...)
 {
-    if (loglevel <= INFO) {
+    if (loglevel <= UFA_LOG_INFO) {
         va_list ap;
         va_start(ap, format);
-        _ufa_log(INFO, format, ap);
+        _ufa_log(UFA_LOG_INFO, format, ap);
         va_end(ap);
     }
 }
@@ -83,10 +84,10 @@ ufa_info(char *format, ...)
 void
 ufa_warn(char *format, ...)
 {
-    if (loglevel <= WARN) {
+    if (loglevel <= UFA_LOG_WARN) {
         va_list ap;
         va_start(ap, format);
-        _ufa_log(WARN, format, ap);
+        _ufa_log(UFA_LOG_WARN, format, ap);
         va_end(ap);
     }
 }
@@ -94,10 +95,10 @@ ufa_warn(char *format, ...)
 void
 ufa_error(char *format, ...)
 {
-    if (loglevel <= ERROR) {
+    if (loglevel <= UFA_LOG_ERROR) {
         va_list ap;
         va_start(ap, format);
-        _ufa_log(ERROR, format, ap);
+        _ufa_log(UFA_LOG_ERROR, format, ap);
         va_end(ap);
     }
 }
@@ -105,10 +106,10 @@ ufa_error(char *format, ...)
 void
 ufa_fatal(char *format, ...)
 {
-    if (loglevel <= FATAL) {
+    if (loglevel <= UFA_LOG_FATAL) {
         va_list ap;
         va_start(ap, format);
-        _ufa_log(FATAL, format, ap);
+        _ufa_log(UFA_LOG_FATAL, format, ap);
         va_end(ap);
     }
 }

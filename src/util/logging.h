@@ -6,13 +6,12 @@
 #include <limits.h>
 
 typedef enum ufa_log_level_e {
-    DEBUG = 0,
-    INFO = 1,
-    WARN = 2,
-    ERROR = 3,
-    FATAL = 4,
-    LOG_OFF = INT_MAX,
-
+    UFA_LOG_DEBUG = 0,
+    UFA_LOG_INFO  = 1,
+    UFA_LOG_WARN  = 2,
+    UFA_LOG_ERROR = 3,
+    UFA_LOG_FATAL = 4,
+    UFA_LOG_OFF   = INT_MAX,
 } ufa_log_level_t;
 
 void
