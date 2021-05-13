@@ -36,6 +36,9 @@ print_usage_list(FILE *stream);
 static void
 print_usage_clear(FILE *stream);
 
+static void
+print_usage_list_all(FILE *stream);
+
 static int
 handle_unset();
 
@@ -47,6 +50,9 @@ handle_list();
 
 static int
 handle_clear();
+
+static int
+handle_list_all();
 
 static int
 handle_command(char *command);
@@ -74,18 +80,20 @@ static char *program_version = "0.1";
 typedef int (*handle_command_f)();
 typedef void (*help_command_f)(FILE *data);
 
-static const int NUM_COMMANDS = 4;
-static char *commands[] = { "set", "unset", "list", "clear" };
+static const int NUM_COMMANDS = 5;
+static char *commands[] = { "set", "unset", "list", "clear", "list-all" };
 
 static help_command_f help_commands[] = { print_usage_set,
                                           print_usage_unset,
                                           print_usage_list,
-                                          print_usage_clear
+                                          print_usage_clear,
+                                          print_usage_list_all,
                                         };
 static handle_command_f handle_commands[] = { handle_set,
                                               handle_unset,
                                               handle_list,
-                                              handle_clear
+                                              handle_clear,
+                                              handle_list_all,
                                             };
 
 
@@ -143,6 +151,12 @@ print_usage_clear(FILE *stream)
     printf("\nUnset all tags on file\n\n");
 }
 
+static void
+print_usage_list_all(FILE *stream)
+{
+    printf("\nUsage:  %s list-all\n", program_name);
+    printf("\nList all tags of repository\n\n");
+}
 
 /* set tag on file */
 static int
@@ -231,6 +245,31 @@ handle_clear()
     bool is_ok         = ufa_repo_clear_tags_for_file(file, &error);
     ufa_error_print_and_free(error);
     return is_ok ? EX_OK : EXIT_FAILURE;
+}
+
+
+/**
+ * Handle list-all command.
+ * Prints all tags
+ */
+static int
+handle_list_all()
+{
+    int ret;
+    ufa_error_t *error = NULL;
+    ufa_list_t *list   = ufa_get_all_tags(&error);
+    bool is_ok         = (error == NULL);
+    if (is_ok) {
+        for (UFA_LIST_EACH(iter, list)) {
+            printf("%s\n", (char *)iter->data);
+        }
+        ufa_list_free_full(list, free);
+        ret = EX_OK;
+    } else {
+        ret = EXIT_FAILURE;
+        ufa_error_print_and_free(error);
+    }
+    return ret;
 }
 
 
