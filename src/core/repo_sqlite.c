@@ -418,11 +418,18 @@ static void
 _create_repo_indicator_file(char *repository)
 {
     char *filepath = ufa_util_join_path(2, repository, REPOSITORY_INDICATOR_FILE_NAME);
+    if (ufa_util_isfile(filepath)) {
+        goto end;
+    }
     ufa_debug("Writting %s file", filepath);
     FILE *fp = fopen(filepath, "w");
-    
+    if (fp == NULL) {
+        fprintf(stderr, "error openning '%s': %s\n", filepath, strerror(errno));
+        abort();
+    }
     fprintf(fp, "%s", repository);
     fclose(fp);
+end:
     free(filepath);
 }
 

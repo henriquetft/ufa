@@ -150,7 +150,7 @@ ufa_fuse_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi
         stat(filepath, &st);
         _copy_stat(stbuf, &st);
 
-    /* ANOTHER TAG */;
+    /* ANOTHER TAG */
     } else if (ufa_repo_is_a_tag(path, NULL)) {
         _copy_stat(stbuf, &stat_repository);
     } else {

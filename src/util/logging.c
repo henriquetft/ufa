@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include "util/logging.h"
 
-static int loglevel = UFA_LOG_DEBUG;
+static int loglevel = UFA_LOG_OFF;
 
 #define IS_VALID_LOG_LEVEL(level) (level >= UFA_LOG_DEBUG && level <= UFA_LOG_FATAL)
 

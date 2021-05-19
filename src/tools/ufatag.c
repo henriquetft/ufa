@@ -39,6 +39,9 @@ print_usage_clear(FILE *stream);
 static void
 print_usage_list_all(FILE *stream);
 
+static void
+print_usage_create(FILE *stream);
+
 static int
 handle_unset();
 
@@ -53,6 +56,9 @@ handle_clear();
 
 static int
 handle_list_all();
+
+static int
+handle_create();
 
 static int
 handle_command(char *command);
@@ -80,20 +86,22 @@ static char *program_version = "0.1";
 typedef int (*handle_command_f)();
 typedef void (*help_command_f)(FILE *data);
 
-static const int NUM_COMMANDS = 5;
-static char *commands[] = { "set", "unset", "list", "clear", "list-all" };
+static const int NUM_COMMANDS = 6;
+static char *commands[] = { "set", "unset", "list", "clear", "list-all", "create" };
 
 static help_command_f help_commands[] = { print_usage_set,
                                           print_usage_unset,
                                           print_usage_list,
                                           print_usage_clear,
                                           print_usage_list_all,
+                                          print_usage_create,
                                         };
 static handle_command_f handle_commands[] = { handle_set,
                                               handle_unset,
                                               handle_list,
                                               handle_clear,
                                               handle_list_all,
+                                              handle_create,
                                             };
 
 
@@ -119,6 +127,7 @@ print_usage(FILE *stream)
         "  list\t\tList the tags on file\n"
         "  clear\t\tUnset all tags on file\n"
         "  list-all\tList all tags\n"
+        "  create\tCreate a tag"
         "\n"
         "Run '%s COMMAND -h' for more information on a command.\n"
         "\n", program_name);
@@ -158,6 +167,14 @@ print_usage_list_all(FILE *stream)
     printf("\nUsage:  %s list-all\n", program_name);
     printf("\nList all tags of repository\n\n");
 }
+
+static void
+print_usage_create(FILE *stream)
+{
+    printf("\nUsage:  %s create TAG\n", program_name);
+    printf("\nCreate a tag\n\n");
+}
+
 
 /* set tag on file */
 static int
@@ -271,6 +288,26 @@ handle_list_all()
         ufa_error_print_and_free(error);
     }
     return ret;
+}
+
+
+/**
+ * Handle create command.
+ */
+static int
+handle_create()
+{
+    if (!HAS_NEXT_ARG) {
+        print_usage_create(stderr);
+        return EX_USAGE;
+    }
+
+    char *tag = NEXT_ARG;
+
+    ufa_error_t *error = NULL;
+    bool is_ok         = (ufa_repo_insert_tag(tag, &error) > 0);
+    ufa_error_print_and_free(error);
+    return is_ok ? EX_OK : EXIT_FAILURE;
 }
 
 
