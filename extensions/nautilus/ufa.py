@@ -49,9 +49,14 @@ from subprocess import Popen, TimeoutExpired
 from gi.repository import Nautilus, GObject
 
 
-def get_ufa_repo_dir(filepath):
+def get_ufa_repo_by_file(filepath):
     """ Reads .ufarepo file and returns root repository """
-    path_list = filepath.split('/')[:-1]
+    return get_ufa_repo_by_dir("/".join(filepath.split('/')[:-1]))
+
+
+def get_ufa_repo_by_dir(filepath):
+    """ Reads .ufarepo file and returns root repository """
+    path_list = filepath.split('/')
     path_list.append('.ufarepo')
     ufarepo_path = "/".join(path_list)
     try:
@@ -93,6 +98,7 @@ class UFACommand:
                         command, proc.returncode))
                 stdout = stdout.decode('utf-8')
                 log(f'\nCommand return stdout:\n{stdout}')
+                log(f'\nCommand returncode:\n{proc.returncode}')
                 return stdout
             except TimeoutExpired:
                 proc.kill()
@@ -149,7 +155,7 @@ class Command(UFACommand):
                                  --width=300 --height=350 {} \
                                  --separator=':'"""
                               .format(filename, tags_param),
-                              exp=[0, 1])
+                              exp=[0])
         tags_checked = [x.strip() for x in stdout.split(':')]
         if len(tags_checked) == 0 or \
                 len(tags_checked) == 1 and \
@@ -181,15 +187,18 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
         all_tags = cmd.get_all_tags()
         tags_for_file = cmd.get_tags_for_file(filename)
 
-        tags_checked = cmd.dialog_tags(filename, all_tags, tags_for_file)
+        try:
+            tags_checked = cmd.dialog_tags(filename, all_tags, tags_for_file)
 
-        log(f"Tags checked: {tags_checked}")
-        tags_to_unset = set(tags_for_file) - set(tags_checked)
-        tags_to_set = set(tags_checked) - set(tags_for_file)
+            log(f"Tags checked: {tags_checked}")
+            tags_to_unset = set(tags_for_file) - set(tags_checked)
+            tags_to_set = set(tags_checked) - set(tags_for_file)
 
-        log("Executing sets and unsets commands ...")
-        cmd.set_tags_for_file(filename, tags_to_set)
-        cmd.unset_tags_for_file(filename, tags_to_unset)
+            log("Executing sets and unsets commands ...")
+            cmd.set_tags_for_file(filename, tags_to_set)
+            cmd.unset_tags_for_file(filename, tags_to_unset)
+        except Exception:
+            log("retuned non-zero. error or operation canceled")
 
     def menu_activate_create_tags(self, menu, ufarepo):
         log(f"Calling create_tags: repo={ufarepo}")
@@ -219,7 +228,7 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
         filepath = str(file.get_uri())
         filepath = filepath.split("file://")[1]
         filepath = unquote(filepath)
-        ufarepo = get_ufa_repo_dir(filepath)
+        ufarepo = get_ufa_repo_by_file(filepath)
         if ufarepo is None:
             log(f"{filepath} is not in a repo dir")
             return None
@@ -260,7 +269,8 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
         filepath = unquote(filepath)
         if not is_repo_dir(filepath):
             return None
-
+        repo_dir = get_ufa_repo_by_dir(filepath)
+        log("REPO DIR: f{repo_dir}")
         submenu = Nautilus.Menu()
         submenu_item = Nautilus.MenuItem(name='MenuProvider::Create_Tag',
                                               label='Create tag',
@@ -276,6 +286,6 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
 
         submenu_item.connect('activate',
                              self.menu_activate_create_tags,
-                             filepath)
+                             repo_dir)
 
         return (menuitem,)
