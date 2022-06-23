@@ -1,0 +1,2 @@
+$ apt install python3-nautilus
+Copy file to ~/.local/share/nautilus-python/extensions
