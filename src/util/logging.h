@@ -29,4 +29,15 @@ ufa_error(char *format, ...);
 void
 ufa_fatal(char *format, ...);
 
+ufa_log_level_t
+ufa_log_level_from_str(char *level);
+
+void
+ufa_log_set(ufa_log_level_t level);
+
+ufa_log_level_t
+ufa_log_get();
+
+
+
 #endif /* LOGGING_H_ */

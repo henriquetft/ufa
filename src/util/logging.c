@@ -21,6 +21,37 @@ static const struct log_level_attrs_s log_level_attr[5] = {
 };
 
 
+ufa_log_level_t
+ufa_log_level_from_str(char *level)
+{
+    if (!strcasecmp("off", level)) {
+        return UFA_LOG_OFF;
+    } else if (!strcasecmp("debug", level)) {
+        return UFA_LOG_DEBUG;
+    } else if (!strcasecmp("info", level)) {
+        return UFA_LOG_INFO;
+    } else if (!strcasecmp("warn", level)) {
+        return UFA_LOG_WARN;
+    } else if (!strcasecmp("error", level)) {
+        return UFA_LOG_ERROR;
+    } else if (!strcasecmp("fatal", level)) {
+        return UFA_LOG_FATAL;
+    }
+    return UFA_LOG_OFF;
+}
+
+void
+ufa_log_set(ufa_log_level_t level)
+{
+    loglevel = level;
+}
+
+ufa_log_level_t
+ufa_log_get()
+{
+    return loglevel;
+}
+
 char *
 ufa_log_level_to_str(ufa_log_level_t level)
 {
