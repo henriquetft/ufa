@@ -12,7 +12,20 @@ typedef enum
     UFA_ERROR_NOTDIR,
     UFA_ERROR_FILE,
     UFA_ERROR_STATE,
+    UFA_ERROR_ARGS,
 } ufa_repo_error_t;
+
+typedef enum 
+{
+    UFA_REPO_EQUAL,
+    UFA_ERROR_CONTAINS,
+} ufa_repo_match_mode_t;
+
+typedef struct ufa_repo_filter_attr_s {
+    char *attribute;
+    char *value;
+    ufa_repo_match_mode_t match_mode;
+} ufa_repo_filter_attr_t;
 
 
 char *
@@ -47,5 +60,16 @@ ufa_repo_unset_tag_on_file(const char *filepath, const char *tag, ufa_error_t **
 
 int
 ufa_repo_insert_tag(const char *tag, ufa_error_t **error);
+
+ufa_repo_filter_attr_t *
+ufa_repo_filter_attr_new(const char *attribute, const char *value, ufa_repo_match_mode_t match_mode);
+
+void
+ufa_repo_filter_attr_free(ufa_repo_filter_attr_t *filter);
+
+ufa_list_t *
+ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error);
+
+
 
 #endif /* REPO_H_ */

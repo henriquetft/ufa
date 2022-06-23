@@ -709,3 +709,163 @@ end:
     sqlite3_finalize(stmt);
     return status;
 }
+
+
+ufa_repo_filter_attr_t *
+ufa_repo_filter_attr_new(const char *attribute, const char *value, ufa_repo_match_mode_t match_mode)
+{
+    ufa_repo_filter_attr_t *ptr = calloc(1, sizeof *ptr);
+    ptr->attribute = ufa_strdup(attribute);
+    ptr->value = (value == NULL) ? NULL : ufa_strdup(value);
+    ptr->match_mode = match_mode;
+    return ptr;
+}
+
+
+void
+ufa_repo_filter_attr_free(ufa_repo_filter_attr_t *filter)
+{
+    if (filter != NULL) { 
+        free(filter->attribute);
+        free(filter->value);
+        free(filter);
+    }
+}
+
+char *
+_generate_sql_search_attrs(ufa_list_t *filter_attr)
+{
+    int count_list = ufa_list_size(filter_attr);
+    if (count_list == 0) {
+        return ufa_strdup("");
+    }
+    char *new_str = malloc(count_list*50 * sizeof *new_str);
+    new_str[0] = '\0';
+    const char *sql = "(a.name = ? AND a.value = ?)";
+    const char *sql2 = "(a.name = ?)";
+    int x = 1;
+    for (UFA_LIST_EACH(iter_attr, filter_attr)) {
+        /* read iter_attr->next to implement properly */ 
+        if (((ufa_repo_filter_attr_t *)iter_attr->data)->value == NULL) {
+            strcat(new_str, sql2);
+        } else {
+            strcat(new_str, sql);
+        }
+
+        if (iter_attr->next != NULL) {
+            strcat(new_str, " OR ");
+        }
+    }
+
+    char *ret = ufa_str_sprintf(" AND (%s) GROUP BY f.id HAVING COUNT(f.id) = ?", new_str);
+    free(new_str);
+    return ret;
+}
+
+char *
+_generate_sql_search_tags(ufa_list_t *tags)
+{
+    int count_tags = ufa_list_size(tags);
+    char *sql_args_tags = _sql_arg_list(tags);
+
+     char *sql_filter_tags = NULL;
+
+    char *fixa = "f.id IN (SELECT id_file "
+                       "FROM file_tag ft,tag t "
+			           "WHERE id_tag = t.id "
+                       "AND t.name IN (%s) "
+                       "GROUP BY id_file "
+                       "HAVING COUNT(id_file) = ?) ";
+    if (count_tags > 0) {
+        sql_filter_tags = ufa_str_sprintf(fixa, sql_args_tags);
+    } else {
+        sql_filter_tags = ufa_strdup("");
+    }
+
+    free(sql_args_tags);
+    return sql_filter_tags;
+}
+
+ufa_list_t *
+ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
+{
+    ufa_debug("searching...\n");
+
+    ufa_list_t *result_list_names = NULL;
+    
+    int count_tags = ufa_list_size(tags);
+    int count_attrs = ufa_list_size(filter_attr);
+
+    if (count_tags == 0 && count_attrs == 0) {
+        ufa_error_set(error, UFA_ERROR_ARGS, "you must search for tags or attributes");
+        return NULL;
+    }
+    char *sql_search_tags = _generate_sql_search_tags(tags);
+    char *sql_search_attrs = _generate_sql_search_attrs(filter_attr);
+
+    if (count_attrs && count_tags) {
+        char *old = sql_search_tags;
+        sql_search_tags = ufa_util_strcat(old, " AND ");
+        free(old);
+    }
+
+    char *a1 = count_attrs ? ",attribute a " : "";
+    char *a2 = count_attrs ? " a.id_file=f.id " : "";
+    char *full_sql = ufa_str_sprintf(
+        "SELECT f.id,f.name "
+        "FROM file f%s "
+        "WHERE  %s "
+            " %s "
+	        " %s "
+            , a1, sql_search_tags, a2, sql_search_attrs); 
+
+    ufa_debug("Searching for tags : %s", full_sql);
+
+    sqlite3_stmt *stmt = NULL;
+    if (!db_prepare(&stmt, full_sql, error)) {
+        goto end;
+    }
+
+    // filling tag parameters
+    int x = 1;
+
+    if (count_tags) {
+        for (UFA_LIST_EACH(iter_tags, tags)) {
+            sqlite3_bind_text(stmt, x++, (char *) iter_tags->data, -1, NULL);
+        }
+        sqlite3_bind_int(stmt, x++, count_tags);
+    }
+
+    if (count_attrs) {
+        // filling attrs parameters
+        for (UFA_LIST_EACH(iter_attrs, filter_attr)) {
+            ufa_repo_filter_attr_t *attr = (ufa_repo_filter_attr_t *) iter_attrs->data;
+            sqlite3_bind_text(stmt, x++, attr->attribute, -1, NULL);
+            if (attr->value != NULL) {
+                sqlite3_bind_text(stmt, x++, attr->value, -1, NULL);
+            }       
+        }
+        sqlite3_bind_int(stmt, x++, count_attrs);
+    }
+
+    int r;
+    while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
+        //int stmt_id          = sqlite3_column_int(stmt, 0);
+        //int *id              = malloc(sizeof(int));
+        //*id                  = stmt_id;
+        const char *filename = ufa_strdup((const char *)sqlite3_column_text(stmt, 1));
+        ufa_debug("found file: %s\n", filename);
+        result_list_names    = ufa_list_append(result_list_names, filename);
+    }
+
+
+    end:
+    sqlite3_finalize(stmt);
+    free(sql_search_tags);
+    free(sql_search_attrs);
+    free(full_sql);
+    return result_list_names;
+
+}
+
+
