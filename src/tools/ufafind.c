@@ -40,6 +40,8 @@ static char **global_argv = NULL;
 static char *program_name = "";
 static char *program_version = "0.1";
 
+static char *match_mode_str[] = { "=", "~=" };
+
 
 /* ============================================================================================== */
 /* IMPLEMENTATION                                                                                 */
@@ -58,7 +60,7 @@ print_usage(FILE *stream)
         "  -a ATTRIBUTE\tFind by attribute. e.g. attribute=value\n"
         "  -t tag TAG\tFind by tag.\n"
         "  -l LOG_LEVEL\tLog levels: debug, info, warn, error, fatal\n"
-        "\n", program_name);
+        "\n");
 }
 
 
@@ -101,15 +103,32 @@ main(int argc, char *argv[])
         case 'a':
             attr = ufa_strdup(optarg);
             ufa_debug("Attribute: %s\n", attr);
-            
-            if (strstr(attr, "=") == NULL) {
-                ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(attr, NULL, UFA_REPO_EQUAL);
+            int index_found_matchmode = -1;
+            // finding out which matchmode was used
+            // finding by simple string comparison, so using matchmode with most characters
+            // e.g. "=" is in both matchmodes "=" and "!="
+            for (int x = 0; x < UFA_REPO_MATCH_MODE_TOTAL; x++) {
+                char *str_match_mode = match_mode_str[x];
+                ufa_repo_match_mode_t match_mode = ufa_repo_match_mode_supported[x];            
+                if (strstr(attr, str_match_mode) != NULL) {
+                    if (index_found_matchmode == -1) {
+                        index_found_matchmode = x;
+                    } else if (strlen(match_mode_str[x]) > strlen(match_mode_str[index_found_matchmode])) {
+                        index_found_matchmode = x;
+                    }
+                }
+            }
+
+            if (index_found_matchmode != -1) {
+                char *str_match_mode = match_mode_str[index_found_matchmode];
+                ufa_repo_match_mode_t match_mode = ufa_repo_match_mode_supported[index_found_matchmode];            
+                ufa_list_t *parts = ufa_util_str_split(attr, str_match_mode);
+                ufa_debug("Adding filter: %s / %s (matchmode: %s)\n", parts->data, parts->next->data, str_match_mode);
+                ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(parts->data, parts->next->data, match_mode);
+                ufa_list_free_full(parts, free);
                 attrs = ufa_list_append(attrs, filter);
             } else {
-                ufa_list_t *parts = ufa_util_str_split(attr, "=");
-                ufa_debug("Adding filter: %s=%s\n", parts->data, parts->next->data);
-                ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(parts->data, parts->next->data, UFA_REPO_EQUAL);
-                ufa_list_free_full(parts, free);
+                ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(attr, NULL, UFA_REPO_EQUAL);
                 attrs = ufa_list_append(attrs, filter);
             }
             free(attr);

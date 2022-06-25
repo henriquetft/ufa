@@ -17,9 +17,15 @@ typedef enum
 
 typedef enum 
 {
-    UFA_REPO_EQUAL,
-    UFA_ERROR_CONTAINS,
+     UFA_REPO_EQUAL = 0,     // =
+     UFA_REPO_WILDCARD,      // ~=
+     UFA_REPO_MATCH_MODE_TOTAL,
 } ufa_repo_match_mode_t;
+
+
+/* List of supported match modes */
+extern const ufa_repo_match_mode_t ufa_repo_match_mode_supported[];
+
 
 typedef struct ufa_repo_filter_attr_s {
     char *attribute;

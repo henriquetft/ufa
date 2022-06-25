@@ -61,7 +61,9 @@ typedef struct ufa_repo_conn_s {
     char *name;  /* name of the file */
 } ufa_repo_conn_t;
 
+const ufa_repo_match_mode_t ufa_repo_match_mode_supported[] = { UFA_REPO_EQUAL, UFA_REPO_WILDCARD };
 
+static char *ufa_repo_match_mode_sql[] = { "=", "LIKE" };
 static char *repository_path = NULL;
 static ufa_repo_conn_t *conn;
 
@@ -741,15 +743,18 @@ _generate_sql_search_attrs(ufa_list_t *filter_attr)
     }
     char *new_str = malloc(count_list*50 * sizeof *new_str);
     new_str[0] = '\0';
-    const char *sql = "(a.name = ? AND a.value = ?)";
-    const char *sql2 = "(a.name = ?)";
-    int x = 1;
+    const char *sql_with_value = "(a.name = ? AND a.value %s ?)";
+    
+    const char *sql_without_value = "(a.name = ?)";
     for (UFA_LIST_EACH(iter_attr, filter_attr)) {
         /* read iter_attr->next to implement properly */ 
         if (((ufa_repo_filter_attr_t *)iter_attr->data)->value == NULL) {
-            strcat(new_str, sql2);
+            strcat(new_str, sql_without_value);
         } else {
-            strcat(new_str, sql);
+            char *str = ufa_str_sprintf(sql_with_value,
+                ufa_repo_match_mode_sql[((ufa_repo_filter_attr_t *)iter_attr->data)->match_mode]);
+            strcat(new_str, str);
+            free(str);
         }
 
         if (iter_attr->next != NULL) {
@@ -842,7 +847,12 @@ ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
             ufa_repo_filter_attr_t *attr = (ufa_repo_filter_attr_t *) iter_attrs->data;
             sqlite3_bind_text(stmt, x++, attr->attribute, -1, NULL);
             if (attr->value != NULL) {
-                sqlite3_bind_text(stmt, x++, attr->value, -1, NULL);
+                char *value = ufa_strdup(attr->value);
+                if (attr->match_mode == UFA_REPO_WILDCARD) {
+                    ufa_str_replace_char(value, '*', '%');
+                }
+                sqlite3_bind_text(stmt, x++, value, -1, SQLITE_TRANSIENT);
+                free(value);
             }       
         }
         sqlite3_bind_int(stmt, x++, count_attrs);
