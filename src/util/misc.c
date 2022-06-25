@@ -225,3 +225,14 @@ ufa_str_sprintf(char const *format, ...)
     va_end(ap);
     return result;
 }
+
+
+void
+ufa_str_replace_char(char *str, char old, char new)
+{
+    char *p = str;
+    while ((p = strchr(p, old))) {
+        *p = new;
+        p++;
+    }
+}

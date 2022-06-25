@@ -53,5 +53,8 @@ ufa_str_vprintf(char const *format, va_list ap);
 char *
 ufa_str_sprintf(char const *format, ...);
 
+void
+ufa_str_replace_char(char *str, char old, char new);
+
 
 #endif /* MISC_H_ */
