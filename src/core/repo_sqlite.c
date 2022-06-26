@@ -794,7 +794,7 @@ _generate_sql_search_tags(ufa_list_t *tags)
 ufa_list_t *
 ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
 {
-    ufa_debug("searching...\n");
+    ufa_debug(__func__);
 
     ufa_list_t *result_list_names = NULL;
     
@@ -808,23 +808,23 @@ ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
     char *sql_search_tags = _generate_sql_search_tags(tags);
     char *sql_search_attrs = _generate_sql_search_attrs(filter_attr);
 
-    if (count_attrs && count_tags) {
-        char *old = sql_search_tags;
-        sql_search_tags = ufa_util_strcat(old, " AND ");
-        free(old);
+    char *full_sql = NULL;
+
+    if (count_tags && !count_attrs) {
+        ufa_debug("Searching by tags");
+        char *sql_tags = "SELECT f.id,f.name FROM file f WHERE %s";
+        full_sql = ufa_str_sprintf(sql_tags, sql_search_tags);
+    } else if (!count_tags && count_attrs) {
+        ufa_debug("Searching by attributes");
+        char *sql_attrs = "SELECT f.id,f.name FROM file f,attribute a WHERE a.id_file=f.id %s";
+        full_sql = ufa_str_sprintf(sql_attrs, sql_search_attrs);
+    } else if (count_tags && count_attrs) {
+        ufa_debug("Searching by tags and attributes");
+        char *sql_tags_attrs = "SELECT f.id,f.name FROM file f,attribute a WHERE  %s  AND a.id_file=f.id %s";
+        full_sql = ufa_str_sprintf(sql_tags_attrs, sql_search_tags, sql_search_attrs);
     }
 
-    char *a1 = count_attrs ? ",attribute a " : "";
-    char *a2 = count_attrs ? " a.id_file=f.id " : "";
-    char *full_sql = ufa_str_sprintf(
-        "SELECT f.id,f.name "
-        "FROM file f%s "
-        "WHERE  %s "
-            " %s "
-	        " %s "
-            , a1, sql_search_tags, a2, sql_search_attrs); 
-
-    ufa_debug("Searching for tags : %s", full_sql);
+    ufa_debug("SQL: %s", full_sql);
 
     sqlite3_stmt *stmt = NULL;
     if (!db_prepare(&stmt, full_sql, error)) {
@@ -834,6 +834,7 @@ ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
     // filling tag parameters
     int x = 1;
 
+    // filling tag parameters
     if (count_tags) {
         for (UFA_LIST_EACH(iter_tags, tags)) {
             sqlite3_bind_text(stmt, x++, (char *) iter_tags->data, -1, NULL);
@@ -841,8 +842,8 @@ ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
         sqlite3_bind_int(stmt, x++, count_tags);
     }
 
+    // filling attrs parameters
     if (count_attrs) {
-        // filling attrs parameters
         for (UFA_LIST_EACH(iter_attrs, filter_attr)) {
             ufa_repo_filter_attr_t *attr = (ufa_repo_filter_attr_t *) iter_attrs->data;
             sqlite3_bind_text(stmt, x++, attr->attribute, -1, NULL);
@@ -860,22 +861,17 @@ ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
 
     int r;
     while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
-        //int stmt_id          = sqlite3_column_int(stmt, 0);
-        //int *id              = malloc(sizeof(int));
-        //*id                  = stmt_id;
-        const char *filename = ufa_strdup((const char *)sqlite3_column_text(stmt, 1));
+        const char *filename = ufa_strdup((const char *) sqlite3_column_text(stmt, 1));
         ufa_debug("found file: %s\n", filename);
         result_list_names    = ufa_list_append(result_list_names, filename);
     }
 
-
-    end:
+end:
     sqlite3_finalize(stmt);
     free(sql_search_tags);
     free(sql_search_attrs);
     free(full_sql);
     return result_list_names;
-
 }
 
 

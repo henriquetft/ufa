@@ -102,7 +102,7 @@ main(int argc, char *argv[])
             break;
         case 'a':
             attr = ufa_strdup(optarg);
-            ufa_debug("Attribute: %s\n", attr);
+            ufa_debug("Attribute: %s", attr);
             int index_found_matchmode = -1;
             // finding out which matchmode was used
             // finding by simple string comparison, so using matchmode with most characters
