@@ -193,7 +193,7 @@ ufa_util_str_multiply(const char *str, int times)
 int
 ufa_util_strcount(const char *str, const char *part)
 {
-    size_t len_part = strlen(part);
+    int len_part = strlen(part);
     int found = 0;
     char *f = str;
     while ((f = strstr(f, part)) != NULL) {
@@ -209,7 +209,7 @@ ufa_str_vprintf(char const *format, va_list ap)
 {
     va_list args2;
     va_copy(args2, ap);
-    size_t len = vsnprintf(NULL, 0, format, ap);
+    int len = vsnprintf(NULL, 0, format, ap);
     char *buffer = (char*) calloc(len+1, 1);
     vsprintf(buffer, format, args2);
     return buffer;
