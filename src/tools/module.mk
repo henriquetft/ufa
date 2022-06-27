@@ -22,7 +22,7 @@ ufafind : $(LOCAL_DIR)/ufafind.o \
 	@echo creating "$@" executable...
 	$(LD) $(CFLAGS) -o"$@" $^ $(LDFLAGS)
 
-ufaset : $(LOCAL_DIR)/ufaset.o \
+ufaattr : $(LOCAL_DIR)/ufaattr.o \
 	src/util/logging.o
 	@echo creating "$@" executable...
 	$(LD) $(CFLAGS) -o"$@" $^ $(LDFLAGS)
