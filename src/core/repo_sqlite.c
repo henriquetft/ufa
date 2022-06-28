@@ -49,6 +49,10 @@
 "CREATE UNIQUE INDEX IF NOT EXISTS \"un\" ON \"file_tag\" (\n"\
 	"\"id_file\","\
 	"\"id_tag\""\
+"); \n"\
+"CREATE UNIQUE INDEX IF NOT EXISTS \"uniq_attr\" ON \"attribute\" (\n"\
+	"\"id_file\","\
+	"\"name\""\
 ");"
 
 #define REPOSITORY_FILENAME "repo.sqlite"
@@ -875,3 +879,77 @@ end:
 }
 
 
+bool
+ufa_repo_set_attr(const char *filepath, const char *attribute, const char *value, ufa_error_t **error)
+{
+    sqlite3_stmt *stmt = NULL;
+    bool status = false;
+    char *sql = "INSERT OR REPLACE INTO attribute(id, id_file, name, value) "
+                "VALUES((SELECT id FROM attribute WHERE id_file=? AND name=?), ?, ?, ?)";
+
+    int file_id = _get_file_id_by_name(filepath, error);
+    if (file_id < 0) {
+        goto end;
+    } else if (file_id == 0) {
+        ufa_error_set(error, UFA_ERROR_STATE, "file '%s' does not exist", filepath);
+        goto end;
+    }
+
+    ufa_debug("SQL for function '%s': %s",  __func__, sql);
+
+    if (!db_prepare(&stmt, sql, error)) {
+        goto end;
+    }
+
+    sqlite3_bind_int(stmt, 1, file_id);
+    sqlite3_bind_text(stmt, 2, attribute, -1, NULL);
+    sqlite3_bind_int(stmt, 3, file_id);
+    sqlite3_bind_text(stmt, 4, attribute, -1, NULL);
+    sqlite3_bind_text(stmt, 5, value, -1, NULL);
+
+    if (!db_execute(stmt, error)) {
+        goto end;
+    }
+
+    status = true;
+
+end:
+    sqlite3_finalize(stmt);
+    return status;
+}
+
+
+bool
+ufa_repo_unset_attr(const char *filepath, const char *attribute, ufa_error_t **error)
+{
+    sqlite3_stmt *stmt = NULL;
+    bool status = false;
+    char *sql = "DELETE from attribute WHERE id_file=? AND name=?";
+
+    int file_id = _get_file_id_by_name(filepath, error);
+    if (file_id < 0) {
+        goto end;
+    } else if (file_id == 0) {
+        ufa_error_set(error, UFA_ERROR_STATE, "file '%s' does not exist", filepath);
+        goto end;
+    }
+
+    ufa_debug("SQL for function '%s': %s",  __func__, sql);
+
+    if (!db_prepare(&stmt, sql, error)) {
+        goto end;
+    }
+
+    sqlite3_bind_int(stmt, 1, file_id);
+    sqlite3_bind_text(stmt, 2, attribute, -1, NULL);
+
+    if (!db_execute(stmt, error)) {
+        goto end;
+    }
+
+    status = true;
+
+end:
+    sqlite3_finalize(stmt);
+    return status;
+}
