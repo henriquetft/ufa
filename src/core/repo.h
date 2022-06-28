@@ -33,6 +33,10 @@ typedef struct ufa_repo_filter_attr_s {
     ufa_repo_match_mode_t match_mode;
 } ufa_repo_filter_attr_t;
 
+typedef struct ufa_repo_attr_s {
+    char *attribute;
+    char *value;
+} ufa_repo_attr_t;
 
 char *
 ufa_repo_get_filename(const char *filepath);
@@ -75,6 +79,21 @@ ufa_repo_filter_attr_free(ufa_repo_filter_attr_t *filter);
 
 ufa_list_t *
 ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error);
+
+bool
+ufa_repo_set_attr(const char *filepath, const char *attribute, const char *value, ufa_error_t **error);
+
+bool
+ufa_repo_unset_attr(const char *filepath, const char *attribute, ufa_error_t **error);
+
+// returns list of ufa_repo_attr_t
+ufa_list_t *
+ufa_repo_get_attr(const char *filepath, const char *attribute, ufa_error_t **error);
+
+
+
+
+
 
 
 
