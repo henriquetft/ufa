@@ -58,9 +58,46 @@ print_usage(FILE *stream)
         "  -v\t\tPrint version information and quit\n"
         "  -r DIR\tRepository dir. Default is current dir\n"
         "  -a ATTRIBUTE\tFind by attribute. e.g. attribute=value\n"
-        "  -t tag TAG\tFind by tag.\n"
+        "  -t tag TAG\tFind by tag\n"
         "  -l LOG_LEVEL\tLog levels: debug, info, warn, error, fatal\n"
         "\n");
+}
+
+
+static void
+_add_attr(char *optarg, ufa_list_t **attrs)
+{
+    char *attr = ufa_strdup(optarg);
+    ufa_debug("Attribute: %s", attr);
+    int index_found_matchmode = -1;
+    // finding out which matchmode was used
+    // finding by simple string comparison, so using matchmode with most characters
+    // e.g. "=" is in both matchmodes "=" and "!="
+    for (int x = 0; x < UFA_REPO_MATCH_MODE_TOTAL; x++) {
+        char *str_match_mode = match_mode_str[x];
+        ufa_repo_match_mode_t match_mode = ufa_repo_match_mode_supported[x];            
+        if (strstr(attr, str_match_mode) != NULL) {
+            if (index_found_matchmode == -1) {
+                index_found_matchmode = x;
+            } else if (strlen(match_mode_str[x]) > strlen(match_mode_str[index_found_matchmode])) {
+                index_found_matchmode = x;
+            }
+        }
+    }
+
+    if (index_found_matchmode != -1) {
+        char *str_match_mode = match_mode_str[index_found_matchmode];
+        ufa_repo_match_mode_t match_mode = ufa_repo_match_mode_supported[index_found_matchmode];            
+        ufa_list_t *parts = ufa_util_str_split(attr, str_match_mode);
+        ufa_debug("Adding filter: %s / %s (matchmode: %s)\n", parts->data, parts->next->data, str_match_mode);
+        ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(parts->data, parts->next->data, match_mode);
+        ufa_list_free_full(parts, free);
+        *attrs = ufa_list_append(*attrs, filter);
+    } else {
+        ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(attr, NULL, UFA_REPO_EQUAL);
+        *attrs = ufa_list_append(*attrs, filter);
+    }
+    free(attr);
 }
 
 
@@ -72,66 +109,37 @@ main(int argc, char *argv[])
     global_argv  = argv;
 
     int opt;
-    char *repository    = NULL;
-    char *attr          = NULL;
-    char *tag           = NULL;
+    char *repository   = NULL;
+    char *tag          = NULL;
 
     ufa_list_t *attrs  = NULL;
     ufa_list_t *tags   = NULL;
     ufa_list_t *result = NULL;
 
-    int error_usage = 0;
-    int exit_status = 0;
-    int r = 0, v = 0, h = 0, log = 0;
+    bool error_usage = false;
+    int exit_status = EX_OK;
+    int r = 0, log = 0;
 
-    while ((opt = getopt(argc, argv, ":r:hva:t:l:")) != -1) {
+    while ((opt = getopt(argc, argv, ":r:hva:t:l:")) != -1 && !error_usage) { 
         switch (opt) {
         case 'r':
             if (r) {
-                error_usage = 1;
+                error_usage = true;
             } else {
                 r = 1;
                 repository = ufa_strdup(optarg);
             }
             break;
         case 'v':
-            v = 1;
-            break;
+            printf("%s\n", program_version);
+            exit_status = EX_OK;
+            goto end;
         case 'h':
-            h = 1;
-            break;
+            print_usage(stdout);
+            exit_status = EX_OK;
+            goto end;
         case 'a':
-            attr = ufa_strdup(optarg);
-            ufa_debug("Attribute: %s", attr);
-            int index_found_matchmode = -1;
-            // finding out which matchmode was used
-            // finding by simple string comparison, so using matchmode with most characters
-            // e.g. "=" is in both matchmodes "=" and "!="
-            for (int x = 0; x < UFA_REPO_MATCH_MODE_TOTAL; x++) {
-                char *str_match_mode = match_mode_str[x];
-                ufa_repo_match_mode_t match_mode = ufa_repo_match_mode_supported[x];            
-                if (strstr(attr, str_match_mode) != NULL) {
-                    if (index_found_matchmode == -1) {
-                        index_found_matchmode = x;
-                    } else if (strlen(match_mode_str[x]) > strlen(match_mode_str[index_found_matchmode])) {
-                        index_found_matchmode = x;
-                    }
-                }
-            }
-
-            if (index_found_matchmode != -1) {
-                char *str_match_mode = match_mode_str[index_found_matchmode];
-                ufa_repo_match_mode_t match_mode = ufa_repo_match_mode_supported[index_found_matchmode];            
-                ufa_list_t *parts = ufa_util_str_split(attr, str_match_mode);
-                ufa_debug("Adding filter: %s / %s (matchmode: %s)\n", parts->data, parts->next->data, str_match_mode);
-                ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(parts->data, parts->next->data, match_mode);
-                ufa_list_free_full(parts, free);
-                attrs = ufa_list_append(attrs, filter);
-            } else {
-                ufa_repo_filter_attr_t *filter = ufa_repo_filter_attr_new(attr, NULL, UFA_REPO_EQUAL);
-                attrs = ufa_list_append(attrs, filter);
-            }
-            free(attr);
+            _add_attr(optarg, &attrs);
             break;
         case 't':
             tag = ufa_strdup(optarg);
@@ -140,7 +148,7 @@ main(int argc, char *argv[])
             break;
         case 'l':
             if (log) {
-                error_usage = 1;
+                error_usage = true;
             } else {
                 log = 1;
                 ufa_log_level_t level = ufa_log_level_from_str(optarg);
@@ -149,11 +157,11 @@ main(int argc, char *argv[])
             }
             break;
         case '?':
-            error_usage = 1;
+            error_usage = true;
             fprintf(stderr, "unknown option: %c\n", optopt);
             break;
         default:
-            error_usage = 1;
+            error_usage = true;
         }
     }
 
@@ -163,16 +171,6 @@ main(int argc, char *argv[])
         goto end;
     }
 
-    if (h) {
-        print_usage(stdout);
-        exit_status = EX_OK;
-        goto end;
-    }
-    if (v) {
-        printf("%s\n", program_version);
-        exit_status = EX_OK;
-        goto end;
-    }
 
     if (repository == NULL) {
         // repository = ufa_util_get_current_dir();
@@ -183,6 +181,7 @@ main(int argc, char *argv[])
     }
 
     ufa_error_t *err = NULL;
+
     if (!ufa_repo_init(repository, &err)) {
         ufa_error_print_and_free(err);
         exit_status = EXIT_FAILURE;
@@ -191,7 +190,10 @@ main(int argc, char *argv[])
 
 
     result = ufa_repo_search(attrs, tags, &err);
-    ufa_error_print_and_free(err);
+    if (err) {
+        ufa_error_print(err);
+        exit_status = 1;
+    }
 
     // print result
     for (UFA_LIST_EACH(iter_result, result)) {
@@ -199,6 +201,7 @@ main(int argc, char *argv[])
     }
 
 end:
+    ufa_error_free(err);
     free(repository);
     ufa_list_free_full(attrs, ufa_repo_filter_attr_free);
     ufa_list_free_full(tags, free);

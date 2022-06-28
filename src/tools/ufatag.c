@@ -355,69 +355,83 @@ main(int argc, char *argv[])
     int opt;
     char *repository = NULL;
 
-    int error = 0;
-    int r = 0, v = 0, h = 0;
-    while ((opt = getopt(argc, argv, ":r:hv")) != -1) {
+    bool error_usage = false;
+    int exit_status = EX_OK;
+    int r = 0, log = 0;
+
+    while ((opt = getopt(argc, argv, ":r:hv")) != -1 && !error_usage) {
         switch (opt) {
         case 'r':
             if (r) {
-                error = EX_USAGE;
+                error_usage = true;
             } else {
                 r = 1;
                 repository = ufa_strdup(optarg);
             }
             break;
         case 'v':
-            v = 1;
             printf("%s\n", program_version);
-            break;
+            exit_status = EX_OK;
+            goto end;
         case 'h':
-            h = 1;
+            if (HAS_NEXT_ARG) {
+                exit_status = handle_help_option(NEXT_ARG);
+            } else {
+                print_usage(stdout);
+                exit_status = EX_OK;
+            }
+            goto end;
+        case 'l':
+            if (log) {
+                error_usage = true;
+            } else {
+                log = 1;
+                ufa_log_level_t level = ufa_log_level_from_str(optarg);
+                ufa_log_set(level);
+                ufa_debug("LOG LEVEL: %s\n", optarg);
+            }
             break;
         case '?':
-            error = EX_USAGE;
+            error_usage = true;
             fprintf(stderr, "unknown option: %c\n", optopt);
             break;
+
         default:
-            error = EX_USAGE;
+            error_usage = true;
         }
     }
 
-    if (h) {
-        if (HAS_NEXT_ARG) {
-            return handle_help_option(NEXT_ARG);
-        } else {
-            print_usage(stdout);
-            return EX_OK;
-        }
-    } else if (v) {
-        return EX_OK;
-    } else if (error) {
+    if (error_usage) {
         print_usage(stderr);
-        return EX_USAGE;
+        exit_status = EX_USAGE;
+        goto end;
     }
 
     if (!HAS_NEXT_ARG) {
         print_usage(stderr);
-        return EX_USAGE;
+        exit_status = EX_USAGE;
+        goto end;
     }
 
     char *command = NEXT_ARG;
+
     if (repository == NULL) {
         // repository = ufa_util_get_current_dir();
         // ufa_debug("Using CWD as repository: %s", repository);
         fprintf(stderr, "error: you must specify a repository path\n");
-        return EXIT_FAILURE;
+        exit_status = EXIT_FAILURE;
+        goto end;
     }
 
     ufa_error_t *err = NULL;
     if (!ufa_repo_init(repository, &err)) {
         ufa_error_print_and_free(err);
-        free(repository);
-        return 1;
+        exit_status = 1;
+        goto end;
     }
+    exit_status = handle_command(command);
 
+end:
     free(repository);
-
-    return handle_command(command);
+    return exit_status;
 }
