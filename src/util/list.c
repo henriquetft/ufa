@@ -17,10 +17,10 @@
 // =================================================================================================
 
 static void
-link_before(ufa_list_t *list, ufa_list_t *newnode);
+link_before(struct ufa_list *list, struct ufa_list *newnode);
 
-static ufa_list_t *
-new_node(void *data, ufa_list_t *prev, ufa_list_t *next);
+static struct ufa_list *
+new_node(void *data, struct ufa_list *prev, struct ufa_list *next);
 
 
 // =================================================================================================
@@ -32,12 +32,12 @@ new_node(void *data, ufa_list_t *prev, ufa_list_t *next);
  * Returns: the same list with the new element in the tail, or the new node
  * (new single-element list) if list was NULL
  */
-ufa_list_t *
-ufa_list_append(ufa_list_t *list, void *element)
+struct ufa_list *
+ufa_list_append(struct ufa_list *list, void *element)
 {
-    ufa_list_t *node = new_node(element, NULL, NULL);
+    struct ufa_list *node = new_node(element, NULL, NULL);
 
-    ufa_list_t *last;
+    struct ufa_list *last;
     if (list != NULL) {
         last = ufa_list_get_last(list);
         last->next = node;
@@ -47,36 +47,36 @@ ufa_list_append(ufa_list_t *list, void *element)
 }
 
 
-ufa_list_t *
-ufa_list_prepend(ufa_list_t *list, void *element)
+struct ufa_list *
+ufa_list_prepend(struct ufa_list *list, void *element)
 {
-    ufa_list_t *node = new_node(element, NULL, NULL);
+    struct ufa_list *node = new_node(element, NULL, NULL);
     link_before(list, node);
     return node;
 }
 
 
-ufa_list_t *
-ufa_list_insert(ufa_list_t *list, unsigned int pos, void *element)
+struct ufa_list *
+ufa_list_insert(struct ufa_list *list, unsigned int pos, void *element)
 {
     if (pos == 0) {
         return ufa_list_prepend(list, element);
     }
 
-    ufa_list_t *l = ufa_list_get(list, pos);
+    struct ufa_list *l = ufa_list_get(list, pos);
     if (l == NULL) { /* not found */
         return ufa_list_append(list, element);
     }
 
-    ufa_list_t *node = new_node(element, NULL, NULL);
+    struct ufa_list *node = new_node(element, NULL, NULL);
     link_before(l, node);
 
     return list;
 }
 
 
-ufa_list_t *
-ufa_list_get(ufa_list_t *list, unsigned int pos)
+struct ufa_list *
+ufa_list_get(struct ufa_list *list, unsigned int pos)
 {
     unsigned int x;
     for (x = 0; (x < pos && list != NULL); x++) {
@@ -86,8 +86,8 @@ ufa_list_get(ufa_list_t *list, unsigned int pos)
 }
 
 
-ufa_list_t *
-ufa_list_get_first(ufa_list_t *list)
+struct ufa_list *
+ufa_list_get_first(struct ufa_list *list)
 {
     if (list == NULL) {
         return NULL;
@@ -97,8 +97,8 @@ ufa_list_get_first(ufa_list_t *list)
 }
 
 
-ufa_list_t *
-ufa_list_get_last(ufa_list_t *list)
+struct ufa_list *
+ufa_list_get_last(struct ufa_list *list)
 {
     for (; (list->next != NULL); list = list->next)
         ;
@@ -106,7 +106,7 @@ ufa_list_get_last(ufa_list_t *list)
 }
 
 unsigned int
-ufa_list_size(ufa_list_t *list)
+ufa_list_size(struct ufa_list *list)
 {
     unsigned int size;
     for (size = 0; (list != NULL); list = list->next, size++)
@@ -116,7 +116,7 @@ ufa_list_size(ufa_list_t *list)
 
 
 void
-ufa_list_foreach(ufa_list_t *list, ufa_list_for_each_func forfunc, void *user_data)
+ufa_list_foreach(struct ufa_list *list, ufa_list_for_each_func forfunc, void *user_data)
 {
     for (; (list != NULL); list = list->next) {
         forfunc(list->data, user_data);
@@ -125,14 +125,14 @@ ufa_list_foreach(ufa_list_t *list, ufa_list_for_each_func forfunc, void *user_da
 
 
 /* just disconnects the node */
-ufa_list_t *
-ufa_list_unlink_node(ufa_list_t *list, ufa_list_t *node)
+struct ufa_list *
+ufa_list_unlink_node(struct ufa_list *list, struct ufa_list *node)
 {
     if (node == NULL) {
         return list;
     }
-    ufa_list_t *prev = node->prev;
-    ufa_list_t *next = node->next;
+    struct ufa_list *prev = node->prev;
+    struct ufa_list *next = node->next;
 
     if (prev != NULL) {
         prev->next = next;
@@ -149,13 +149,13 @@ ufa_list_unlink_node(ufa_list_t *list, ufa_list_t *node)
 
 
 void
-ufa_list_free_full(ufa_list_t *list, ufa_list_free_func freefunc)
+ufa_list_free_full(struct ufa_list *list, ufa_list_free_func freefunc)
 {
     while (list != NULL) {
         if (freefunc != NULL) {
             freefunc(list->data);
         }
-        ufa_list_t *toFree = list;
+        struct ufa_list *toFree = list;
         list = list->next;
         free(toFree);
     }
@@ -163,17 +163,17 @@ ufa_list_free_full(ufa_list_t *list, ufa_list_free_func freefunc)
 
 
 void
-ufa_list_free(ufa_list_t *list)
+ufa_list_free(struct ufa_list *list)
 {
     ufa_list_free_full(list, NULL);
 }
 
 /* ==============   auxiliary (private) functions   ========================== */
 
-static ufa_list_t *
-new_node(void *data, ufa_list_t *prev, ufa_list_t *next)
+static struct ufa_list *
+new_node(void *data, struct ufa_list *prev, struct ufa_list *next)
 {
-    ufa_list_t *node = malloc(sizeof(ufa_list_t));
+    struct ufa_list *node = malloc(sizeof(struct ufa_list));
     node->data = data;
     node->next = next;
     node->prev = prev;
@@ -183,7 +183,7 @@ new_node(void *data, ufa_list_t *prev, ufa_list_t *next)
 
 
 static void
-link_before(ufa_list_t *list, ufa_list_t *newnode)
+link_before(struct ufa_list *list, struct ufa_list *newnode)
 {
     assert(newnode->next == NULL && newnode->prev == NULL);
     if (list != NULL) {

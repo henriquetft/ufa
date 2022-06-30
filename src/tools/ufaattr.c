@@ -211,7 +211,7 @@ handle_get()
     bool found = false;
 
     struct ufa_error *error = NULL;
-    ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
+    struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
     for (UFA_LIST_EACH(i, list_attrs)) {
         struct ufa_repo_attr *attr_iter = (struct ufa_repo_attr *) i->data;
@@ -237,7 +237,7 @@ handle_list()
     char *attr = NEXT_ARG;
 
     struct ufa_error *error = NULL;
-    ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
+    struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
     for (UFA_LIST_EACH(i, list_attrs)) {
         printf("%s\n", ((struct ufa_repo_attr *) i->data)->attribute);
@@ -257,7 +257,7 @@ handle_describe()
     char *file = NEXT_ARG;
 
     struct ufa_error *error = NULL;
-    ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
+    struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
     for (UFA_LIST_EACH(i, list_attrs)) {
         struct ufa_repo_attr *attr_iter = (struct ufa_repo_attr *) i->data;

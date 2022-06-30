@@ -173,7 +173,7 @@ ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
     filler(buf, "..", NULL, 0, 0);
 
     struct ufa_error *error = NULL;
-    ufa_list_t *list   = ufa_repo_list_files_for_dir(path, &error);
+    struct ufa_list *list   = ufa_repo_list_files_for_dir(path, &error);
     ufa_error_abort(error);
 
     for (UFA_LIST_EACH(iter, list)) {

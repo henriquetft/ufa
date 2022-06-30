@@ -109,7 +109,7 @@ _db_execute(sqlite3_stmt *stmt, struct ufa_error **error, const char* func_name)
  * The number of characters '?' is equal to the number of elements in list.
  */
 static char *
-_sql_arg_list(ufa_list_t *list)
+_sql_arg_list(struct ufa_list *list)
 {
     int size = ufa_list_size(list);
     if (size == 0) {
@@ -201,8 +201,8 @@ end:
  * Retrieves all tags for a list of files, excluding the list of tags passed
  * as argument.
  */
-static ufa_list_t *
-_get_tags_for_files_excluding(ufa_list_t *file_ids, ufa_list_t *tags, struct ufa_error **error)
+static struct ufa_list *
+_get_tags_for_files_excluding(struct ufa_list *file_ids, struct ufa_list *tags, struct ufa_error **error)
 {
     if (file_ids == NULL) {
         return NULL;
@@ -210,7 +210,7 @@ _get_tags_for_files_excluding(ufa_list_t *file_ids, ufa_list_t *tags, struct ufa
 
     char *sql           = "SELECT DISTINCT t.name FROM tag t, file_tag ft, file f WHERE ft.id_tag "
                           " = t.id AND f.id = ft.id_file AND f.id IN (%s) AND t.name NOT IN (%s)";
-    ufa_list_t *result  = NULL;
+    struct ufa_list *result  = NULL;
     char *sql_file_args = _sql_arg_list(file_ids);
     char *sql_tags_args = _sql_arg_list(tags);
     char *full_sql      = ufa_str_sprintf(sql, sql_file_args, sql_tags_args);
@@ -223,11 +223,11 @@ _get_tags_for_files_excluding(ufa_list_t *file_ids, ufa_list_t *tags, struct ufa
     
     /* setting query args */
     int x = 1;
-    for (ufa_list_t *list = file_ids; (list != NULL); list = list->next) {
+    for (struct ufa_list *list = file_ids; (list != NULL); list = list->next) {
         sqlite3_bind_int(stmt, x++, *((int *)list->data));
     }
 
-    for (ufa_list_t *list = tags; (list != NULL); list = list->next) {
+    for (struct ufa_list *list = tags; (list != NULL); list = list->next) {
         sqlite3_bind_text(stmt, x++, (char *)list->data, -1, NULL);
     }
 
@@ -244,12 +244,12 @@ end:
 }
 
 
-static ufa_list_t *
-_get_files_with_tags(ufa_list_t *tags, struct ufa_error **error)
+static struct ufa_list *
+_get_files_with_tags(struct ufa_list *tags, struct ufa_error **error)
 {
-    ufa_list_t *list     = NULL;
-    ufa_list_t *result   = NULL;
-    ufa_list_t *file_ids = NULL;
+    struct ufa_list *list     = NULL;
+    struct ufa_list *result   = NULL;
+    struct ufa_list *file_ids = NULL;
     
     int size = ufa_list_size(tags);
     if (size == 0) {
@@ -286,7 +286,7 @@ _get_files_with_tags(ufa_list_t *tags, struct ufa_error **error)
 
     // for the files selected get all tags that are not in list 'tags'
     // because we need to show files with and tags other than the ones in path
-    ufa_list_t *other_tags = _get_tags_for_files_excluding(file_ids, tags, error);
+    struct ufa_list *other_tags = _get_tags_for_files_excluding(file_ids, tags, error);
     if (error && *error) {
         goto end;
     }
@@ -451,8 +451,8 @@ end:
 char *
 ufa_repo_get_filename(const char *filepath)
 {
-    ufa_list_t *split = ufa_util_str_split(filepath, UFA_FILE_SEPARATOR);
-    ufa_list_t *last  = ufa_list_get_last(split);
+    struct ufa_list *split = ufa_util_str_split(filepath, UFA_FILE_SEPARATOR);
+    struct ufa_list *last  = ufa_list_get_last(split);
     char *last_part   = ufa_strdup((char *)last->data);
     ufa_list_free_full(split, free);
     return last_part;
@@ -479,10 +479,10 @@ ufa_repo_init(const char *repository, struct ufa_error **error)
 }
 
 
-ufa_list_t *
+struct ufa_list *
 ufa_get_all_tags(struct ufa_error **error)
 {
-    ufa_list_t *all_tags = NULL;
+    struct ufa_list *all_tags = NULL;
     int rows             = 0;
     int columns          = 0;
     char **result_sql    = NULL;
@@ -507,7 +507,7 @@ ufa_get_all_tags(struct ufa_error **error)
 
 sqlite_error:
     if (all_tags) {
-        ufa_list_t *head = ufa_list_get_first(all_tags);
+        struct ufa_list *head = ufa_list_get_first(all_tags);
         ufa_list_free_full(head, free);
     }
     ufa_error("Sqlite3 error: %d (%s)", sql_ret, err);
@@ -553,15 +553,15 @@ ufa_repo_get_file_path(const char *path, struct ufa_error **error)
 }
 
 
-ufa_list_t *
+struct ufa_list *
 ufa_repo_list_files_for_dir(const char *path, struct ufa_error** error)
 {
-    ufa_list_t *list = NULL;
+    struct ufa_list *list = NULL;
     if (ufa_util_strequals(path, "/")) {
         /* FIXME cache. it is better to clone all_tags */
         list = ufa_get_all_tags(error);
     } else {
-        ufa_list_t *list_of_tags = ufa_util_str_split(path, "/");
+        struct ufa_list *list_of_tags = ufa_util_str_split(path, "/");
         // get all files with tags
         list = _get_files_with_tags(list_of_tags, error);
         ufa_list_free_full(list_of_tags, free);
@@ -574,7 +574,7 @@ ufa_repo_list_files_for_dir(const char *path, struct ufa_error** error)
 
 /* TODO use error argument and returns the list */
 bool
-ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list, struct ufa_error **error)
+ufa_repo_get_tags_for_file(const char *filepath, struct ufa_list **list, struct ufa_error **error)
 {
     bool status = true;
 
@@ -739,7 +739,7 @@ ufa_repo_filter_attr_free(struct ufa_repo_filter_attr *filter)
 }
 
 char *
-_generate_sql_search_attrs(ufa_list_t *filter_attr)
+_generate_sql_search_attrs(struct ufa_list *filter_attr)
 {
     int count_list = ufa_list_size(filter_attr);
     if (count_list == 0) {
@@ -772,7 +772,7 @@ _generate_sql_search_attrs(ufa_list_t *filter_attr)
 }
 
 char *
-_generate_sql_search_tags(ufa_list_t *tags)
+_generate_sql_search_tags(struct ufa_list *tags)
 {
     int count_tags = ufa_list_size(tags);
     char *sql_args_tags = _sql_arg_list(tags);
@@ -795,12 +795,12 @@ _generate_sql_search_tags(ufa_list_t *tags)
     return sql_filter_tags;
 }
 
-ufa_list_t *
-ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, struct ufa_error **error)
+struct ufa_list *
+ufa_repo_search(struct ufa_list *filter_attr, struct ufa_list *tags, struct ufa_error **error)
 {
     ufa_debug(__func__);
 
-    ufa_list_t *result_list_names = NULL;
+    struct ufa_list *result_list_names = NULL;
     
     int count_tags = ufa_list_size(tags);
     int count_attrs = ufa_list_size(filter_attr);
@@ -955,10 +955,10 @@ end:
 }
 
 
-ufa_list_t *
+struct ufa_list *
 ufa_repo_get_attr(const char *filepath, struct ufa_error **error)
 {
-    ufa_list_t *result_list_attrs = NULL;
+    struct ufa_list *result_list_attrs = NULL;
     sqlite3_stmt *stmt = NULL;
     char *sql = "SELECT name,value FROM attribute WHERE id_file=?";
     int file_id = _get_file_id_by_name(filepath, error);

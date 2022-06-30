@@ -99,10 +99,10 @@ ufa_util_join_str(char *delim, int args, const char *first_element, ...)
 }
 
 
-ufa_list_t *
+struct ufa_list *
 ufa_util_str_split(const char *str, const char *delim)
 {
-    ufa_list_t *list = NULL;
+    struct ufa_list *list = NULL;
 
     char *s = ufa_strdup(str);
     char *ptr = strtok(s, delim);

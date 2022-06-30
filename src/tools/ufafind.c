@@ -65,7 +65,7 @@ print_usage(FILE *stream)
 
 
 static void
-_add_attr(char *optarg, ufa_list_t **attrs)
+_add_attr(char *optarg, struct ufa_list **attrs)
 {
     char *attr = ufa_strdup(optarg);
     ufa_debug("Attribute: %s", attr);
@@ -88,7 +88,7 @@ _add_attr(char *optarg, ufa_list_t **attrs)
     if (mm_index != -1) {
         char *str_mm = match_mode_str[mm_index];
         enum ufa_repo_match_mode mm = ufa_repo_match_mode_supported[mm_index];            
-        ufa_list_t *parts = ufa_util_str_split(attr, str_mm);
+        struct ufa_list *parts = ufa_util_str_split(attr, str_mm);
         ufa_debug("Adding filter: %s / %s (matchmode: %s)\n", parts->data, parts->next->data, str_mm);
         struct ufa_repo_filter_attr *filter = ufa_repo_filter_attr_new(parts->data, parts->next->data, mm);
         ufa_list_free_full(parts, free);
@@ -112,9 +112,9 @@ main(int argc, char *argv[])
     char *repository   = NULL;
     char *tag          = NULL;
 
-    ufa_list_t *attrs  = NULL;
-    ufa_list_t *tags   = NULL;
-    ufa_list_t *result = NULL;
+    struct ufa_list *attrs  = NULL;
+    struct ufa_list *tags   = NULL;
+    struct ufa_list *result = NULL;
 
     bool error_usage = false;
     int exit_status = EX_OK;

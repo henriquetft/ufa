@@ -226,7 +226,7 @@ handle_list()
     char *arg = NEXT_ARG;
 
     /* FIXME must fail if file does not exist */
-    ufa_list_t *list   = NULL;
+    struct ufa_list *list   = NULL;
     struct ufa_error *error = NULL;
     bool is_ok         = ufa_repo_get_tags_for_file(arg, &list, &error);
     int ret;
@@ -275,7 +275,7 @@ handle_list_all()
 {
     int ret;
     struct ufa_error *error = NULL;
-    ufa_list_t *list   = ufa_get_all_tags(&error);
+    struct ufa_list *list   = ufa_get_all_tags(&error);
     bool is_ok         = (error == NULL);
     if (is_ok) {
         for (UFA_LIST_EACH(iter, list)) {

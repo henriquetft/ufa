@@ -26,7 +26,7 @@ ufa_util_isfile(const char *filename);
 char *
 ufa_util_get_current_dir();
 
-ufa_list_t *
+struct ufa_list *
 ufa_util_str_split(const char *str, const char *delim);
 
 int
