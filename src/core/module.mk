@@ -8,9 +8,6 @@ SOURCES += $(addprefix $(LOCAL_DIR)/, $(LOCAL_SRCS))
 
 PROGRAMS += ufafs
 
-################################################################################
-
-
 
 ufafs : src/core/ufafs.o \
         src/core/repo_sqlite.o \

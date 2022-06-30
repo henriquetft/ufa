@@ -9,8 +9,6 @@ SOURCES += $(addprefix $(LOCAL_DIR)/, $(LOCAL_SRCS))
 PROGRAMS += ufafind ufaattr ufatag
 
 
-################################################################################
-
 	
 ufafind : $(LOCAL_DIR)/ufafind.o \
 	src/util/logging.o \
