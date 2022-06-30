@@ -78,7 +78,7 @@ static struct ufa_repo_conn *conn;
 
 
 bool
-_db_prepare(sqlite3_stmt **stmt, char *sql, ufa_error_t **error, const char* func_name)
+_db_prepare(sqlite3_stmt **stmt, char *sql, struct ufa_error **error, const char* func_name)
 {
     int prepare_ret = sqlite3_prepare_v2(conn->db, sql, -1, stmt, NULL);
     if (prepare_ret != SQLITE_OK) {
@@ -91,7 +91,7 @@ _db_prepare(sqlite3_stmt **stmt, char *sql, ufa_error_t **error, const char* fun
 
 
 static bool
-_db_execute(sqlite3_stmt *stmt, ufa_error_t **error, const char* func_name)
+_db_execute(sqlite3_stmt *stmt, struct ufa_error **error, const char* func_name)
 {
     bool status = true;
     int r = sqlite3_step(stmt);
@@ -126,7 +126,7 @@ _sql_arg_list(ufa_list_t *list)
  * Returns the ufa_repo_conn_t or NULL on error. 
  */
 static struct ufa_repo_conn *
-_open_sqlite_conn(const char *file, ufa_error_t **error)
+_open_sqlite_conn(const char *file, struct ufa_error **error)
 {
     char *errmsg = NULL;
     struct ufa_repo_conn *conn = malloc(sizeof *conn);
@@ -175,7 +175,7 @@ error_create_table:
  * Returns negative values on error; 0 for tag not found; id of a tag when found
  */
 static int
-_get_tag_id_by_name(const char *tag, ufa_error_t **error)
+_get_tag_id_by_name(const char *tag, struct ufa_error **error)
 {
     int tag_id         = 0;
     sqlite3_stmt *stmt = NULL;
@@ -202,7 +202,7 @@ end:
  * as argument.
  */
 static ufa_list_t *
-_get_tags_for_files_excluding(ufa_list_t *file_ids, ufa_list_t *tags, ufa_error_t **error)
+_get_tags_for_files_excluding(ufa_list_t *file_ids, ufa_list_t *tags, struct ufa_error **error)
 {
     if (file_ids == NULL) {
         return NULL;
@@ -245,7 +245,7 @@ end:
 
 
 static ufa_list_t *
-_get_files_with_tags(ufa_list_t *tags, ufa_error_t **error)
+_get_files_with_tags(ufa_list_t *tags, struct ufa_error **error)
 {
     ufa_list_t *list     = NULL;
     ufa_list_t *result   = NULL;
@@ -331,7 +331,7 @@ end:
 
 
 static int
-_insert_file(const char *filename, ufa_error_t **error)
+_insert_file(const char *filename, struct ufa_error **error)
 {
     sqlite_int64 id_file = -1;
     sqlite3_stmt *stmt   = NULL;
@@ -354,7 +354,7 @@ end:
 }
 
 static int
-_get_file_id_by_name(const char *filename, ufa_error_t **error)
+_get_file_id_by_name(const char *filename, struct ufa_error **error)
 {
     char *filepath = NULL;
     int file_id    = 0;
@@ -390,7 +390,7 @@ end:
 
 
 static bool
-_set_tag_on_file(int file_id, int tag_id, ufa_error_t **error)
+_set_tag_on_file(int file_id, int tag_id, struct ufa_error **error)
 {
     bool status      = false;
     char *sql_insert = "INSERT INTO file_tag (id_file, id_tag) VALUES (?, ?)";
@@ -460,7 +460,7 @@ ufa_repo_get_filename(const char *filepath)
 
 
 bool
-ufa_repo_init(const char *repository, ufa_error_t **error)
+ufa_repo_init(const char *repository, struct ufa_error **error)
 {
     if (!ufa_util_isdir(repository)) {
         ufa_error_set(error, UFA_ERROR_NOTDIR, "error: %s is not a dir", repository);
@@ -480,7 +480,7 @@ ufa_repo_init(const char *repository, ufa_error_t **error)
 
 
 ufa_list_t *
-ufa_get_all_tags(ufa_error_t **error)
+ufa_get_all_tags(struct ufa_error **error)
 {
     ufa_list_t *all_tags = NULL;
     int rows             = 0;
@@ -523,7 +523,7 @@ sqlite_error:
  * E.g.: tag1/tag2/tag3 or tag1/tag2/file.
  */
 bool
-ufa_repo_is_a_tag(const char *path, ufa_error_t **error)
+ufa_repo_is_a_tag(const char *path, struct ufa_error **error)
 {
     char *last_part = ufa_repo_get_filename(path);
     bool ret = (ufa_repo_get_file_path(path, NULL) == NULL && 
@@ -534,7 +534,7 @@ ufa_repo_is_a_tag(const char *path, ufa_error_t **error)
 
 
 char *
-ufa_repo_get_file_path(const char *path, ufa_error_t **error)
+ufa_repo_get_file_path(const char *path, struct ufa_error **error)
 {
     /* FIXME remove error? */
     char *result    = NULL;
@@ -554,7 +554,7 @@ ufa_repo_get_file_path(const char *path, ufa_error_t **error)
 
 
 ufa_list_t *
-ufa_repo_list_files_for_dir(const char *path, ufa_error_t** error)
+ufa_repo_list_files_for_dir(const char *path, struct ufa_error** error)
 {
     ufa_list_t *list = NULL;
     if (ufa_util_strequals(path, "/")) {
@@ -574,7 +574,7 @@ ufa_repo_list_files_for_dir(const char *path, ufa_error_t** error)
 
 /* TODO use error argument and returns the list */
 bool
-ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list, ufa_error_t **error)
+ufa_repo_get_tags_for_file(const char *filepath, ufa_list_t **list, struct ufa_error **error)
 {
     bool status = true;
 
@@ -606,7 +606,7 @@ end:
  * Negative values on error 
  */
 int
-ufa_repo_insert_tag(const char *tag, ufa_error_t **error)
+ufa_repo_insert_tag(const char *tag, struct ufa_error **error)
 {
     int tag_id         = _get_tag_id_by_name(tag, error);
     sqlite3_stmt *stmt = NULL;
@@ -624,7 +624,7 @@ ufa_repo_insert_tag(const char *tag, ufa_error_t **error)
 
 
 bool
-ufa_repo_set_tag_on_file(const char *filepath, const char *tag, ufa_error_t **error)
+ufa_repo_set_tag_on_file(const char *filepath, const char *tag, struct ufa_error **error)
 {
     ufa_debug("Setting tag '%s' for file '%s'", tag, filepath);
 
@@ -652,7 +652,7 @@ end:
 
 
 bool
-ufa_repo_clear_tags_for_file(const char *filepath, ufa_error_t **error)
+ufa_repo_clear_tags_for_file(const char *filepath, struct ufa_error **error)
 {
     int r              = 0;
     bool status        = false;
@@ -686,7 +686,7 @@ end:
 
 
 bool
-ufa_repo_unset_tag_on_file(const char *filepath, const char *tag, ufa_error_t **error)
+ufa_repo_unset_tag_on_file(const char *filepath, const char *tag, struct ufa_error **error)
 {
     bool status        = 0;
     sqlite3_stmt *stmt = NULL;
@@ -796,7 +796,7 @@ _generate_sql_search_tags(ufa_list_t *tags)
 }
 
 ufa_list_t *
-ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
+ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, struct ufa_error **error)
 {
     ufa_debug(__func__);
 
@@ -880,7 +880,7 @@ end:
 
 
 bool
-ufa_repo_set_attr(const char *filepath, const char *attribute, const char *value, ufa_error_t **error)
+ufa_repo_set_attr(const char *filepath, const char *attribute, const char *value, struct ufa_error **error)
 {
     sqlite3_stmt *stmt = NULL;
     bool status = false;
@@ -920,7 +920,7 @@ end:
 
 
 bool
-ufa_repo_unset_attr(const char *filepath, const char *attribute, ufa_error_t **error)
+ufa_repo_unset_attr(const char *filepath, const char *attribute, struct ufa_error **error)
 {
     sqlite3_stmt *stmt = NULL;
     bool status = false;
@@ -956,7 +956,7 @@ end:
 
 
 ufa_list_t *
-ufa_repo_get_attr(const char *filepath, ufa_error_t **error)
+ufa_repo_get_attr(const char *filepath, struct ufa_error **error)
 {
     ufa_list_t *result_list_attrs = NULL;
     sqlite3_stmt *stmt = NULL;

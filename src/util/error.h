@@ -3,25 +3,25 @@
 
 #include <stdarg.h>
 
-typedef struct ufa_error_s
+struct ufa_error
 {
     int code;
     char *message;
-} ufa_error_t;
+};
 
 void
-ufa_error_set(ufa_error_t **error, int code, char *format, ...);
+ufa_error_set(struct ufa_error **error, int code, char *format, ...);
 
 void
-ufa_error_free(ufa_error_t *error);
+ufa_error_free(struct ufa_error *error);
 
 void
-ufa_error_abort(ufa_error_t *error);
+ufa_error_abort(struct ufa_error *error);
 
 void
-ufa_error_print(ufa_error_t *error);
+ufa_error_print(struct ufa_error *error);
 
 void
-ufa_error_print_and_free(ufa_error_t *error);
+ufa_error_print_and_free(struct ufa_error *error);
 
 #endif /* UFA_ERROR_H_ */

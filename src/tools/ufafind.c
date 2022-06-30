@@ -180,7 +180,7 @@ main(int argc, char *argv[])
         goto end;
     }
 
-    ufa_error_t *err = NULL;
+    struct ufa_error *err = NULL;
 
     if (!ufa_repo_init(repository, &err)) {
         ufa_error_print_and_free(err);

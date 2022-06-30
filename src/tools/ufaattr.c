@@ -172,7 +172,7 @@ handle_set()
     char *attr = NEXT_ARG;
     char *value = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     bool is_ok         = ufa_repo_set_attr(file, attr, value, &error);
     ufa_error_print_and_free(error);
     return is_ok ? EX_OK : EXIT_FAILURE;
@@ -190,7 +190,7 @@ handle_unset()
     char *file = NEXT_ARG;
     char *attr = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     bool is_ok         = ufa_repo_unset_attr(file, attr, &error);
     ufa_error_print_and_free(error);
     return is_ok ? EX_OK : EXIT_FAILURE;
@@ -210,7 +210,7 @@ handle_get()
 
     bool found = false;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
     for (UFA_LIST_EACH(i, list_attrs)) {
@@ -236,7 +236,7 @@ handle_list()
     char *file = NEXT_ARG;
     char *attr = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
     for (UFA_LIST_EACH(i, list_attrs)) {
@@ -256,7 +256,7 @@ handle_describe()
 
     char *file = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
     for (UFA_LIST_EACH(i, list_attrs)) {
@@ -375,7 +375,7 @@ main(int argc, char *argv[])
         goto end;
     }
 
-    ufa_error_t *err = NULL;
+    struct ufa_error *err = NULL;
     if (!ufa_repo_init(repository, &err)) {
         ufa_error_print_and_free(err);
         exit_status = 1;

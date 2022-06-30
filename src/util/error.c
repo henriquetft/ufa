@@ -5,7 +5,7 @@
 
 
 void
-ufa_error_set(ufa_error_t **error, int code, char *message, ...)
+ufa_error_set(struct ufa_error **error, int code, char *message, ...)
 {
     if (error == NULL) {
         return;
@@ -14,14 +14,14 @@ ufa_error_set(ufa_error_t **error, int code, char *message, ...)
     va_start(ap, message);
     char *m = ufa_str_vprintf(message, ap);
     va_end(ap);
-    ufa_error_t *err = malloc(sizeof *err);
+    struct ufa_error *err = malloc(sizeof *err);
     err->code        = code;
     err->message     = m;
     *error           = err;
 }
 
 void
-ufa_error_free(ufa_error_t *error)
+ufa_error_free(struct ufa_error *error)
 {
     if (error != NULL) {
         free(error->message);
@@ -30,7 +30,7 @@ ufa_error_free(ufa_error_t *error)
 }
 
 void
-ufa_error_abort(ufa_error_t *error)
+ufa_error_abort(struct ufa_error *error)
 {
     if (error != NULL) {
         fprintf(stderr, "error: %s\n", error->message);
@@ -40,7 +40,7 @@ ufa_error_abort(ufa_error_t *error)
 }
 
 void
-ufa_error_print(ufa_error_t *error)
+ufa_error_print(struct ufa_error *error)
 {
     if (error != NULL) {
         fprintf(stderr, "error: %s\n", error->message);
@@ -48,7 +48,7 @@ ufa_error_print(ufa_error_t *error)
 }
 
 void
-ufa_error_print_and_free(ufa_error_t *error)
+ufa_error_print_and_free(struct ufa_error *error)
 {
     ufa_error_print(error);
     ufa_error_free(error);

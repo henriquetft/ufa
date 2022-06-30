@@ -188,7 +188,7 @@ handle_set()
     char *file = NEXT_ARG;
     char *new_tag = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     bool is_ok         = ufa_repo_set_tag_on_file(file, new_tag, &error);
     ufa_error_print_and_free(error);
     return is_ok ? EX_OK : EXIT_FAILURE;
@@ -207,7 +207,7 @@ handle_unset()
     char *file = NEXT_ARG;
     char *tag = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     bool is_ok         = ufa_repo_unset_tag_on_file(file, tag, &error);
     ufa_error_print_and_free(error);
     return is_ok ? EX_OK : EXIT_FAILURE;
@@ -227,7 +227,7 @@ handle_list()
 
     /* FIXME must fail if file does not exist */
     ufa_list_t *list   = NULL;
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     bool is_ok         = ufa_repo_get_tags_for_file(arg, &list, &error);
     int ret;
 
@@ -259,7 +259,7 @@ handle_clear()
 
     char *file = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     bool is_ok         = ufa_repo_clear_tags_for_file(file, &error);
     ufa_error_print_and_free(error);
     return is_ok ? EX_OK : EXIT_FAILURE;
@@ -274,7 +274,7 @@ static int
 handle_list_all()
 {
     int ret;
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     ufa_list_t *list   = ufa_get_all_tags(&error);
     bool is_ok         = (error == NULL);
     if (is_ok) {
@@ -304,7 +304,7 @@ handle_create()
 
     char *tag = NEXT_ARG;
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     bool is_ok         = (ufa_repo_insert_tag(tag, &error) > 0);
     ufa_error_print_and_free(error);
     return is_ok ? EX_OK : EXIT_FAILURE;
@@ -423,7 +423,7 @@ main(int argc, char *argv[])
         goto end;
     }
 
-    ufa_error_t *err = NULL;
+    struct ufa_error *err = NULL;
     if (!ufa_repo_init(repository, &err)) {
         ufa_error_print_and_free(err);
         exit_status = 1;

@@ -172,7 +172,7 @@ ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
     filler(buf, ".", NULL, 0, 0);
     filler(buf, "..", NULL, 0, 0);
 
-    ufa_error_t *error = NULL;
+    struct ufa_error *error = NULL;
     ufa_list_t *list   = ufa_repo_list_files_for_dir(path, &error);
     ufa_error_abort(error);
 
@@ -239,7 +239,7 @@ ufa_fuse_mkdir(const char *path, mode_t mode)
     ufa_debug("mkdir: %s", path);
     if (ufa_util_str_startswith(path, "/") && ufa_util_strcount(path, "/") == 1) {
         char *last_part    = ufa_repo_get_filename(path);
-        ufa_error_t *error = NULL;
+        struct ufa_error *error = NULL;
         int r              = ufa_repo_insert_tag(last_part, &error);
         free(last_part);
         ufa_error_abort(error);
