@@ -213,8 +213,8 @@ handle_get()
     ufa_error_t *error = NULL;
     ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
-    for (UFA_LIST_EACH(iter_attr, list_attrs)) {
-        ufa_repo_attr_t *attr_iter = (ufa_repo_attr_t *) iter_attr->data;
+    for (UFA_LIST_EACH(i, list_attrs)) {
+        struct ufa_repo_attr *attr_iter = (struct ufa_repo_attr *) i->data;
         if (ufa_util_strequals(attr_iter->attribute, attr)) {
             printf("%s\n", attr_iter->value);
             found = true;
@@ -239,8 +239,8 @@ handle_list()
     ufa_error_t *error = NULL;
     ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
-    for (UFA_LIST_EACH(iter_attr, list_attrs)) {
-        printf("%s\n", ((ufa_repo_attr_t *) iter_attr->data)->attribute);
+    for (UFA_LIST_EACH(i, list_attrs)) {
+        printf("%s\n", ((struct ufa_repo_attr *) i->data)->attribute);
     }
     ufa_list_free_full(list_attrs, ufa_repo_attr_free);
     return !error ? EX_OK : EXIT_FAILURE;
@@ -259,8 +259,8 @@ handle_describe()
     ufa_error_t *error = NULL;
     ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
     ufa_error_print_and_free(error);
-    for (UFA_LIST_EACH(iter_attr, list_attrs)) {
-        ufa_repo_attr_t *attr_iter = (ufa_repo_attr_t *) iter_attr->data;
+    for (UFA_LIST_EACH(i, list_attrs)) {
+        struct ufa_repo_attr *attr_iter = (struct ufa_repo_attr *) i->data;
         printf("%s %s\n", (char *) attr_iter->attribute, (char *) attr_iter->value);
     }
     ufa_list_free_full(list_attrs, ufa_repo_attr_free);

@@ -6,37 +6,37 @@
 #include "util/error.h"
 
 
-typedef enum 
+enum ufa_repo_error
 {
     UFA_ERROR_DATABASE,
     UFA_ERROR_NOTDIR,
     UFA_ERROR_FILE,
     UFA_ERROR_STATE,
     UFA_ERROR_ARGS,
-} ufa_repo_error_t;
+};
 
-typedef enum 
+enum ufa_repo_match_mode
 {
      UFA_REPO_EQUAL = 0,     // =
      UFA_REPO_WILDCARD,      // ~=
      UFA_REPO_MATCH_MODE_TOTAL,
-} ufa_repo_match_mode_t;
+};
 
 
 /* List of supported match modes */
-extern const ufa_repo_match_mode_t ufa_repo_match_mode_supported[];
+extern const enum ufa_repo_match_mode ufa_repo_match_mode_supported[];
 
 
-typedef struct ufa_repo_filter_attr_s {
+struct ufa_repo_filter_attr {
     char *attribute;
     char *value;
-    ufa_repo_match_mode_t match_mode;
-} ufa_repo_filter_attr_t;
+    enum ufa_repo_match_mode match_mode;
+};
 
-typedef struct ufa_repo_attr_s {
+struct ufa_repo_attr {
     char *attribute;
     char *value;
-} ufa_repo_attr_t;
+};
 
 char *
 ufa_repo_get_filename(const char *filepath);
@@ -71,11 +71,11 @@ ufa_repo_unset_tag_on_file(const char *filepath, const char *tag, ufa_error_t **
 int
 ufa_repo_insert_tag(const char *tag, ufa_error_t **error);
 
-ufa_repo_filter_attr_t *
-ufa_repo_filter_attr_new(const char *attribute, const char *value, ufa_repo_match_mode_t match_mode);
+struct ufa_repo_filter_attr *
+ufa_repo_filter_attr_new(const char *attribute, const char *value, enum ufa_repo_match_mode match_mode);
 
 void
-ufa_repo_filter_attr_free(ufa_repo_filter_attr_t *filter);
+ufa_repo_filter_attr_free(struct ufa_repo_filter_attr *filter);
 
 ufa_list_t *
 ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error);
@@ -91,7 +91,7 @@ ufa_list_t *
 ufa_repo_get_attr(const char *filepath, ufa_error_t **error);
 
 void
-ufa_repo_attr_free(ufa_repo_attr_t *attr);
+ufa_repo_attr_free(struct ufa_repo_attr *attr);
 
 
 

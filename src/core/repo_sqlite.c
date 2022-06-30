@@ -60,16 +60,16 @@
 #define db_prepare(stmt, sql, error) _db_prepare(stmt, sql, error, __func__)
 #define db_execute(stmt, error) _db_execute(stmt, error, __func__)
 
-typedef struct ufa_repo_conn_s {
+struct ufa_repo_conn {
     sqlite3 *db; /* sqlite3 object */
     char *name;  /* name of the file */
-} ufa_repo_conn_t;
+};
 
-const ufa_repo_match_mode_t ufa_repo_match_mode_supported[] = { UFA_REPO_EQUAL, UFA_REPO_WILDCARD };
+const enum ufa_repo_match_mode ufa_repo_match_mode_supported[] = { UFA_REPO_EQUAL, UFA_REPO_WILDCARD };
 
 static char *ufa_repo_match_mode_sql[] = { "=", "LIKE" };
 static char *repository_path = NULL;
-static ufa_repo_conn_t *conn;
+static struct ufa_repo_conn *conn;
 
 
 /* ============================================================================================== */
@@ -125,12 +125,12 @@ _sql_arg_list(ufa_list_t *list)
  * Attempts to establish a connection to sqlite repository.
  * Returns the ufa_repo_conn_t or NULL on error. 
  */
-static ufa_repo_conn_t *
+static struct ufa_repo_conn *
 _open_sqlite_conn(const char *file, ufa_error_t **error)
 {
-    char *errmsg          = NULL;
-    ufa_repo_conn_t *conn = malloc(sizeof *conn);
-    int rc                = sqlite3_open(file, &conn->db); /* create file if it do not exist */
+    char *errmsg = NULL;
+    struct ufa_repo_conn *conn = malloc(sizeof *conn);
+    int rc = sqlite3_open(file, &conn->db); /* create file if it do not exist */
     sqlite3_extended_result_codes(conn->db, 1);
 
     if (rc != SQLITE_OK) {
@@ -717,10 +717,10 @@ end:
 }
 
 
-ufa_repo_filter_attr_t *
-ufa_repo_filter_attr_new(const char *attribute, const char *value, ufa_repo_match_mode_t match_mode)
+struct ufa_repo_filter_attr *
+ufa_repo_filter_attr_new(const char *attribute, const char *value, enum ufa_repo_match_mode match_mode)
 {
-    ufa_repo_filter_attr_t *ptr = calloc(1, sizeof *ptr);
+    struct ufa_repo_filter_attr *ptr = calloc(1, sizeof *ptr);
     ptr->attribute = ufa_strdup(attribute);
     ptr->value = (value == NULL) ? NULL : ufa_strdup(value);
     ptr->match_mode = match_mode;
@@ -729,7 +729,7 @@ ufa_repo_filter_attr_new(const char *attribute, const char *value, ufa_repo_matc
 
 
 void
-ufa_repo_filter_attr_free(ufa_repo_filter_attr_t *filter)
+ufa_repo_filter_attr_free(struct ufa_repo_filter_attr *filter)
 {
     if (filter != NULL) { 
         free(filter->attribute);
@@ -752,11 +752,11 @@ _generate_sql_search_attrs(ufa_list_t *filter_attr)
     const char *sql_without_value = "(a.name = ?)";
     for (UFA_LIST_EACH(iter_attr, filter_attr)) {
         /* read iter_attr->next to implement properly */ 
-        if (((ufa_repo_filter_attr_t *)iter_attr->data)->value == NULL) {
+        if (((struct ufa_repo_filter_attr *) iter_attr->data)->value == NULL) {
             strcat(new_str, sql_without_value);
         } else {
             char *str = ufa_str_sprintf(sql_with_value,
-                ufa_repo_match_mode_sql[((ufa_repo_filter_attr_t *)iter_attr->data)->match_mode]);
+                ufa_repo_match_mode_sql[((struct ufa_repo_filter_attr *) iter_attr->data)->match_mode]);
             strcat(new_str, str);
             free(str);
         }
@@ -848,8 +848,8 @@ ufa_repo_search(ufa_list_t *filter_attr, ufa_list_t *tags, ufa_error_t **error)
 
     // filling attrs parameters
     if (count_attrs) {
-        for (UFA_LIST_EACH(iter_attrs, filter_attr)) {
-            ufa_repo_filter_attr_t *attr = (ufa_repo_filter_attr_t *) iter_attrs->data;
+        for (UFA_LIST_EACH(i, filter_attr)) {
+            struct ufa_repo_filter_attr *attr = (struct ufa_repo_filter_attr *) i->data;
             sqlite3_bind_text(stmt, x++, attr->attribute, -1, NULL);
             if (attr->value != NULL) {
                 char *value = ufa_strdup(attr->value);
@@ -981,7 +981,7 @@ ufa_repo_get_attr(const char *filepath, ufa_error_t **error)
     while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
         const char *attribute = ufa_strdup((const char *) sqlite3_column_text(stmt, 0));
         const char *value = ufa_strdup((const char *) sqlite3_column_text(stmt, 1));
-        ufa_repo_attr_t *attr = calloc(1, sizeof *attr);
+        struct ufa_repo_attr *attr = calloc(1, sizeof *attr);
         attr->attribute = attribute;
         attr->value = value;
         result_list_attrs = ufa_list_append(result_list_attrs, attr);
@@ -994,7 +994,7 @@ end:
 }
 
 void
-ufa_repo_attr_free(ufa_repo_attr_t *attr)
+ufa_repo_attr_free(struct ufa_repo_attr *attr)
 {
     if (attr) {
         free(attr->attribute);
