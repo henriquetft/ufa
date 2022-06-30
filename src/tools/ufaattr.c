@@ -142,7 +142,7 @@ static void
 print_usage_get(FILE *stream)
 {
     printf("\nUsage:  %s get FILE ATTRIBUTE\n", program_name);
-    printf("\ntGet the value of an attribute\n\n");
+    printf("\nGet the value of an attribute\n\n");
 }
 
 static void
@@ -208,12 +208,20 @@ handle_get()
     char *file = NEXT_ARG;
     char *attr = NEXT_ARG;
 
-    return 0;
+    bool found = false;
 
-    // ufa_error_t *error = NULL;
-    // bool is_ok         = ufa_repo_set_tag_on_file(file, new_tag, &error);
-    // ufa_error_print_and_free(error);
-    // return is_ok ? EX_OK : EXIT_FAILURE;
+    ufa_error_t *error = NULL;
+    ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
+    ufa_error_print_and_free(error);
+    for (UFA_LIST_EACH(iter_attr, list_attrs)) {
+        ufa_repo_attr_t *attr_iter = (ufa_repo_attr_t *) iter_attr->data;
+        if (ufa_util_strequals(attr_iter->attribute, attr)) {
+            printf("%s\n", attr_iter->value);
+            found = true;
+        }
+    }
+    ufa_list_free_full(list_attrs, ufa_repo_attr_free);
+    return (!error && found) ? EX_OK : EXIT_FAILURE;
 }
 
 
@@ -228,12 +236,14 @@ handle_list()
     char *file = NEXT_ARG;
     char *attr = NEXT_ARG;
 
-    return 0;
-
-    // ufa_error_t *error = NULL;
-    // bool is_ok         = ufa_repo_set_tag_on_file(file, new_tag, &error);
-    // ufa_error_print_and_free(error);
-    // return is_ok ? EX_OK : EXIT_FAILURE;
+    ufa_error_t *error = NULL;
+    ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
+    ufa_error_print_and_free(error);
+    for (UFA_LIST_EACH(iter_attr, list_attrs)) {
+        printf("%s\n", ((ufa_repo_attr_t *) iter_attr->data)->attribute);
+    }
+    ufa_list_free_full(list_attrs, ufa_repo_attr_free);
+    return !error ? EX_OK : EXIT_FAILURE;
 }
 
 static int
@@ -246,12 +256,15 @@ handle_describe()
 
     char *file = NEXT_ARG;
 
-    return 0;
-
-    // ufa_error_t *error = NULL;
-    // bool is_ok         = ufa_repo_set_tag_on_file(file, new_tag, &error);
-    // ufa_error_print_and_free(error);
-    // return is_ok ? EX_OK : EXIT_FAILURE;
+    ufa_error_t *error = NULL;
+    ufa_list_t *list_attrs = ufa_repo_get_attr(file, &error);
+    ufa_error_print_and_free(error);
+    for (UFA_LIST_EACH(iter_attr, list_attrs)) {
+        ufa_repo_attr_t *attr_iter = (ufa_repo_attr_t *) iter_attr->data;
+        printf("%s %s\n", (char *) attr_iter->attribute, (char *) attr_iter->value);
+    }
+    ufa_list_free_full(list_attrs, ufa_repo_attr_free);
+    return !error ? EX_OK : EXIT_FAILURE;
 }
 
 static int

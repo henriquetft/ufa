@@ -953,3 +953,53 @@ end:
     sqlite3_finalize(stmt);
     return status;
 }
+
+
+ufa_list_t *
+ufa_repo_get_attr(const char *filepath, ufa_error_t **error)
+{
+    ufa_list_t *result_list_attrs = NULL;
+    sqlite3_stmt *stmt = NULL;
+    char *sql = "SELECT name,value FROM attribute WHERE id_file=?";
+    int file_id = _get_file_id_by_name(filepath, error);
+    if (file_id < 0) {
+        goto end;
+    } else if (file_id == 0) {
+        ufa_error_set(error, UFA_ERROR_STATE, "file '%s' does not exist", filepath);
+        goto end;
+    }
+
+    ufa_debug("SQL for function '%s': %s",  __func__, sql);
+
+    if (!db_prepare(&stmt, sql, error)) {
+        goto end;
+    }
+
+    sqlite3_bind_int(stmt, 1, file_id);
+
+    int r;
+    while ((r = sqlite3_step(stmt)) == SQLITE_ROW) {
+        const char *attribute = ufa_strdup((const char *) sqlite3_column_text(stmt, 0));
+        const char *value = ufa_strdup((const char *) sqlite3_column_text(stmt, 1));
+        ufa_repo_attr_t *attr = calloc(1, sizeof *attr);
+        attr->attribute = attribute;
+        attr->value = value;
+        result_list_attrs = ufa_list_append(result_list_attrs, attr);
+    }
+
+
+end:
+    sqlite3_finalize(stmt);
+    return result_list_attrs;
+}
+
+void
+ufa_repo_attr_free(ufa_repo_attr_t *attr)
+{
+    if (attr) {
+        free(attr->attribute);
+        free(attr->value);
+        free(attr);
+    }
+    
+}

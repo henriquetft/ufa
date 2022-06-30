@@ -88,7 +88,10 @@ ufa_repo_unset_attr(const char *filepath, const char *attribute, ufa_error_t **e
 
 // returns list of ufa_repo_attr_t
 ufa_list_t *
-ufa_repo_get_attr(const char *filepath, const char *attribute, ufa_error_t **error);
+ufa_repo_get_attr(const char *filepath, ufa_error_t **error);
+
+void
+ufa_repo_attr_free(ufa_repo_attr_t *attr);
 
 
 
