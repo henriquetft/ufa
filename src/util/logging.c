@@ -7,12 +7,12 @@ static int loglevel = UFA_LOG_OFF;
 
 #define IS_VALID_LOG_LEVEL(level) (level >= UFA_LOG_DEBUG && level <= UFA_LOG_FATAL)
 
-struct log_level_attrs_s {
+struct log_level_attrs {
 	const char *prefix_str;
 	const char *color;
 };
 
-static const struct log_level_attrs_s log_level_attr[5] = {
+static const struct log_level_attrs log_level_attr[5] = {
     { "[DEBUG]:   ", "\033[0;34m", },
     { "[INFO ]:   ", "\033[0;36m", },
     { "[WARN ]:   ", "\033[0;33m", },
