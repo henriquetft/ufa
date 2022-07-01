@@ -441,6 +441,18 @@ end:
 	free(filepath);
 }
 
+int _get_file_id(const char *filepath, struct ufa_error **error)
+{
+	int file_id = _get_file_id_by_name(filepath, error);
+	if (file_id < 0) {
+		return 0;
+	} else if (file_id == 0) {
+		ufa_error_set(error, UFA_ERROR_STATE,
+			      "file '%s' does not exist", filepath);
+	}
+	return file_id;	
+}
+
 /* ========================================================================== */
 /* FUNCTIONS FROM repo.h                                                      */
 /* ========================================================================== */
@@ -656,12 +668,8 @@ bool ufa_repo_clear_tags_for_file(const char *filepath,
 	sqlite3_stmt *stmt = NULL;
 	char *sql = "DELETE FROM file_tag WHERE id_file=?";
 
-	int file_id = _get_file_id_by_name(filepath, error);
-	if (file_id < 0) {
-		goto end;
-	} else if (file_id == 0) {
-		ufa_error_set(error, UFA_ERROR_STATE,
-			      "file '%s' does not exist", filepath);
+	int file_id;
+	if (!(file_id = _get_file_id(filepath, error))) {
 		goto end;
 	}
 
@@ -691,9 +699,8 @@ bool ufa_repo_unset_tag_on_file(const char *filepath, const char *tag,
 			   "= (SELECT t.id FROM tag"
 			   " t WHERE t.name = ?)";
 
-	int file_id = _get_file_id_by_name(filepath, error);
-	if (file_id == -1) {
-		fprintf(stderr, "file '%s' does not exist\n", filepath);
+	int file_id;
+	if (!(file_id = _get_file_id(filepath, error))) {
 		goto end;
 	}
 
@@ -899,12 +906,8 @@ bool ufa_repo_set_attr(const char *filepath, const char *attribute,
 	    "VALUES((SELECT id FROM attribute WHERE id_file=? AND name=?), ?, "
 	    "?, ?)";
 
-	int file_id = _get_file_id_by_name(filepath, error);
-	if (file_id < 0) {
-		goto end;
-	} else if (file_id == 0) {
-		ufa_error_set(error, UFA_ERROR_STATE,
-			      "file '%s' does not exist", filepath);
+	int file_id;
+	if (!(file_id = _get_file_id(filepath, error))) {
 		goto end;
 	}
 
@@ -931,6 +934,8 @@ end:
 	return status;
 }
 
+
+
 bool ufa_repo_unset_attr(const char *filepath, const char *attribute,
 			 struct ufa_error **error)
 {
@@ -938,12 +943,8 @@ bool ufa_repo_unset_attr(const char *filepath, const char *attribute,
 	bool status = false;
 	char *sql = "DELETE from attribute WHERE id_file=? AND name=?";
 
-	int file_id = _get_file_id_by_name(filepath, error);
-	if (file_id < 0) {
-		goto end;
-	} else if (file_id == 0) {
-		ufa_error_set(error, UFA_ERROR_STATE,
-			      "file '%s' does not exist", filepath);
+	int file_id;
+	if (!(file_id = _get_file_id(filepath, error))) {
 		goto end;
 	}
 
@@ -973,12 +974,9 @@ struct ufa_list *ufa_repo_get_attr(const char *filepath,
 	struct ufa_list *result_list_attrs = NULL;
 	sqlite3_stmt *stmt = NULL;
 	char *sql = "SELECT name,value FROM attribute WHERE id_file=?";
-	int file_id = _get_file_id_by_name(filepath, error);
-	if (file_id < 0) {
-		goto end;
-	} else if (file_id == 0) {
-		ufa_error_set(error, UFA_ERROR_STATE,
-			      "file '%s' does not exist", filepath);
+
+	int file_id;
+	if (!(file_id = _get_file_id(filepath, error))) {
 		goto end;
 	}
 

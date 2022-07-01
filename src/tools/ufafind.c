@@ -70,8 +70,6 @@ static void _add_attr(char *optarg, struct ufa_list **attrs)
 	// characters e.g. "=" is in both matchmodes "=" and "!="
 	for (int x = 0; x < UFA_REPO_MATCH_MODE_TOTAL; x++) {
 		char *str_mm = match_mode_str[x];
-		enum ufa_repo_match_mode match_mode =
-		    ufa_repo_match_mode_supported[x];
 		if (strstr(attr, str_mm) != NULL) {
 			if (mm_index == -1) {
 				mm_index = x;

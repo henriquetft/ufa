@@ -86,7 +86,7 @@ static void _ufa_log(enum ufa_log_level level, char *format, va_list ap)
 	/* man 3 stdarg */
 	FILE *file = stdout;
 	if (is_a_tty) {
-		fprintf(stdout, log_level_attr[level].color);
+		fprintf(stdout, "%s", log_level_attr[level].color);
 	}
 	fprintf(file, "%s", ufa_log_level_to_str(level));
 	vfprintf(file, format, ap);

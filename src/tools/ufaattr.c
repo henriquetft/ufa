@@ -65,7 +65,6 @@ static char *program_version = "0.1";
 typedef int (*handle_command_f)();
 typedef void (*help_command_f)(FILE *data);
 
-static const int NUM_COMMANDS = 5;
 static char *commands[] = {
     "set", "unset", "get", "list", "describe",
 };
@@ -184,10 +183,9 @@ static int handle_get()
 	struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
-		struct ufa_repo_attr *attr_iter =
-		    (struct ufa_repo_attr *)i->data;
-		if (ufa_util_strequals(attr_iter->attribute, attr)) {
-			printf("%s\n", attr_iter->value);
+		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
+		if (ufa_util_strequals(attr_i->attribute, attr)) {
+			printf("%s\n", attr_i->value);
 			found = true;
 		}
 	}
@@ -203,7 +201,6 @@ static int handle_list()
 	}
 
 	char *file = NEXT_ARG;
-	char *attr = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
 	struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
@@ -228,10 +225,9 @@ static int handle_describe()
 	struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
-		struct ufa_repo_attr *attr_iter =
-		    (struct ufa_repo_attr *)i->data;
-		printf("%s %s\n", (char *)attr_iter->attribute,
-		       (char *)attr_iter->value);
+		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
+		printf("%s %s\n", (char *) attr_i->attribute,
+		       (char *) attr_i->value);
 	}
 	ufa_list_free_full(list_attrs, ufa_repo_attr_free);
 	return !error ? EX_OK : EXIT_FAILURE;
@@ -240,10 +236,10 @@ static int handle_describe()
 static int handle_command(char *command)
 {
 	int exit_status = EXIT_COMMAND_NOT_FOUND;
-	for (int pos = 0; pos < NUM_COMMANDS; pos++) {
-		if (ufa_util_strequals(command, commands[pos])) {
+	for (UFA_ARRAY_EACH(i, commands)) {
+		if (ufa_util_strequals(command, commands[i])) {
 			ufa_debug("executing command '%s'", command);
-			exit_status = handle_commands[pos]();
+			exit_status = handle_commands[i]();
 		}
 	}
 	if (exit_status == EXIT_COMMAND_NOT_FOUND) {
@@ -256,9 +252,9 @@ static int handle_command(char *command)
 static int handle_help_option(char *command)
 {
 	int exit_code = EXIT_COMMAND_NOT_FOUND;
-	for (int pos = 0; pos < NUM_COMMANDS; pos++) {
-		if (ufa_util_strequals(command, commands[pos])) {
-			help_commands[pos](stdout);
+	for (UFA_ARRAY_EACH(i, commands)) {
+		if (ufa_util_strequals(command, commands[i])) {
+			help_commands[i](stdout);
 			exit_code = EX_OK;
 		}
 	}
@@ -296,8 +292,12 @@ int main(int argc, char *argv[])
 			exit_status = EX_OK;
 			goto end;
 		case 'h':
-			print_usage(stdout);
-			exit_status = EX_OK;
+			if (HAS_NEXT_ARG) {
+				exit_status = handle_help_option(NEXT_ARG);
+			} else {
+				print_usage(stdout);
+				exit_status = EX_OK;
+			}
 			goto end;
 		case 'l':
 			if (log) {
