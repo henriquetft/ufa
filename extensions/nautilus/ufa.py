@@ -42,6 +42,7 @@ to create a tag.
 """
 
 import subprocess
+import shlex
 import shutil
 import os.path
 from urllib.parse import unquote
@@ -114,8 +115,8 @@ class UFACommand:
     def get_tags_for_file(self, filename):
         """ Executes ufatag list FILE """
         stdout = self.execute(
-            "{} -r {} list '{}'".format(self.ufatag, self.repository,
-                                        filename))
+            "{} -r {} list {}".format(self.ufatag, self.repository,
+                                      shlex.quote(filename)))
         list_tags = stdout.split('\n')[:-1]
         return list_tags
 
@@ -123,19 +124,19 @@ class UFACommand:
         """ Executes ufatag set FILE tag """
         for tag in tag_list:
             self.execute(
-                "{} -r {} set '{}' {}".format(self.ufatag,
-                                              self.repository,
-                                              filename,
-                                              tag))
+                "{} -r {} set {} {}".format(self.ufatag,
+                                            self.repository,
+                                            shlex.quote(filename),
+                                            tag))
 
     def unset_tags_for_file(self, filename, tag_list):
         """ Executes ufatag unset FILE tag """
         for tag in tag_list:
             self.execute(
-                "{} -r {} unset '{}' {}".format(self.ufatag,
-                                                self.repository,
-                                                filename,
-                                                tag))
+                "{} -r {} unset {} {}".format(self.ufatag,
+                                              self.repository,
+                                              shlex.quote(filename),
+                                              tag))
 
     def create_tag(self, tagname):
         self.execute("{} -r {} create {}".format(self.ufatag,
@@ -148,13 +149,13 @@ class Command(UFACommand):
         dict_tags_file = {tag: tag in tags_for_file for tag in all_tags}
         tags_param = ' '.join("{} {}".format(str(val).upper(), key)
                               for (key, val) in dict_tags_file.items())
-        stdout = self.execute("""zenity --list --text 'UFA tags for {}' \
+        stdout = self.execute("""zenity --list --text {} \
                                  --checklist \
                                  --column 'Pick' --column 'Tags' \
                                  --title 'Choose tags for this file' \
                                  --width=300 --height=350 {} \
                                  --separator=':'"""
-                              .format(filename, tags_param),
+                              .format(shlex.quote(filename), tags_param),
                               exp=[0])
         tags_checked = [x.strip() for x in stdout.split(':')]
         if len(tags_checked) == 0 or \
