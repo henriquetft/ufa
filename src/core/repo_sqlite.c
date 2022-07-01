@@ -586,27 +586,31 @@ struct ufa_list *ufa_repo_list_files_for_dir(const char *path,
 bool ufa_repo_get_tags_for_file(const char *filepath, struct ufa_list **list,
 				struct ufa_error **error)
 {
-	bool status = true;
-
-	/* TODO check if file exist */
-	char *filename = ufa_repo_get_filename(filepath);
-	ufa_debug("Listing tags for filename: %s (%s)", filename, filepath);
-	char *sql = "SELECT DISTINCT t.name FROM file f , file_tag ft, tag t "
-		    "where f.id = ft.id_file "
-		    "and ft.id_tag = t.id and f.name=? ORDER BY t.name";
-
+	bool status = false;
+	char *filename = NULL;
 	sqlite3_stmt *stmt = NULL;
-	if (!db_prepare(&stmt, sql, error)) {
-		status = false;
+
+	int file_id;
+	if (!(file_id = _get_file_id(filepath, error))) {
 		goto end;
 	}
 
-	sqlite3_bind_text(stmt, 1, filename, -1, NULL);
+	filename = ufa_repo_get_filename(filepath);
+	ufa_debug("Listing tags for filename: %s (%s)", filename, filepath);
+	char *sql = "SELECT DISTINCT t.name FROM file_tag ft, tag t "
+		    "WHERE ft.id_tag = t.id AND ft.id_file=? ORDER BY t.name";
+	
+	if (!db_prepare(&stmt, sql, error)) {
+		goto end;
+	}
+
+	sqlite3_bind_int(stmt, 1, file_id);
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		const char *tag = (const char *)sqlite3_column_text(stmt, 0);
 		*list = ufa_list_append(*list, ufa_strdup(tag));
 	}
+	status = true;
 end:
 	sqlite3_finalize(stmt);
 	free(filename);
