@@ -6,6 +6,11 @@
 
 #define UFA_FILE_SEPARATOR "/"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+/** FOREACH to iterate over an array */
+#define UFA_ARRAY_EACH(i, arr) size_t i = 0; i < ARRAY_SIZE(arr); i++
+
 char *ufa_util_join_path(int args, const char *first_element, ...);
 
 char *ufa_util_join_str(char *delim, int args, const char *first_element, ...);
