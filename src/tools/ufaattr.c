@@ -226,7 +226,7 @@ static int handle_describe()
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
-		printf("%s %s\n", (char *) attr_i->attribute,
+		printf("%s\t%s\n", (char *) attr_i->attribute,
 		       (char *) attr_i->value);
 	}
 	ufa_list_free_full(list_attrs, ufa_repo_attr_free);
