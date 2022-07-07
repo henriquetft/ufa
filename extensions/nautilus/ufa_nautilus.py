@@ -179,9 +179,13 @@ class Commands:
 
     @classmethod
     def dialog_edit_attr(cls, filename, attr, value):
-        stdout = cls.execute("""{} --entry --title='Edit attribute {}' \
+        stdout, retcode = cls.execute("""{} --entry --title='Edit attribute {}' \
                               --text='Enter new value:' \
-                              --entry-text "{}" """.format(cls.ZENITY, attr, value), exp=[0, 1])
+                              --entry-text "{}" """.format(cls.ZENITY, attr, value),
+                             exp=[0, 1],
+                             returncode=True)
+        if retcode == 1:
+            return None
         return stdout
 
     @classmethod
@@ -319,7 +323,8 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
         if attr_to_edit:
             attr_value = self.cmd.get_attr_value_for_file(repo, filename, attr_to_edit)
             new_value = Commands.dialog_edit_attr(filename, attr_to_edit, attr_value)
-            self.cmd.set_attr_value_for_file(repo, filename, attr_to_edit, new_value)
+            if not new_value is None:
+                self.cmd.set_attr_value_for_file(repo, filename, attr_to_edit, new_value)
 
     @error_handler
     def menu_activate_add_attrs(self, menu, repo, filename):
