@@ -3,6 +3,7 @@
 *.d
 *.o
 .vscode/
+.idea/
 DONTCOMMIT.txt
 ufafind
 ufafs

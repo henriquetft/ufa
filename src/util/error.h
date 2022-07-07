@@ -8,7 +8,7 @@ struct ufa_error {
 	char *message;
 };
 
-void ufa_error_set(struct ufa_error **error, int code, char *format, ...);
+void ufa_error_new(struct ufa_error **error, int code, char *format, ...);
 
 void ufa_error_free(struct ufa_error *error);
 

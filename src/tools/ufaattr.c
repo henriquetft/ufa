@@ -146,7 +146,7 @@ static int handle_set()
 	char *value = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_set_attr(file, attr, value, &error);
+	bool is_ok = ufa_repo_setattr(file, attr, value, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -162,7 +162,7 @@ static int handle_unset()
 	char *attr = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_unset_attr(file, attr, &error);
+	bool is_ok = ufa_repo_unsetattr(file, attr, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -180,7 +180,7 @@ static int handle_get()
 	bool found = false;
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
+	struct ufa_list *list_attrs = ufa_repo_getattr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
@@ -189,7 +189,7 @@ static int handle_get()
 			found = true;
 		}
 	}
-	ufa_list_free_full(list_attrs, ufa_repo_attr_free);
+	ufa_list_free_full(list_attrs, ufa_repo_attrfree);
 	return (!error && found) ? EX_OK : EXIT_FAILURE;
 }
 
@@ -203,12 +203,12 @@ static int handle_list()
 	char *file = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
+	struct ufa_list *list_attrs = ufa_repo_getattr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		printf("%s\n", ((struct ufa_repo_attr *)i->data)->attribute);
 	}
-	ufa_list_free_full(list_attrs, ufa_repo_attr_free);
+	ufa_list_free_full(list_attrs, ufa_repo_attrfree);
 	return !error ? EX_OK : EXIT_FAILURE;
 }
 
@@ -222,14 +222,14 @@ static int handle_describe()
 	char *file = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_repo_get_attr(file, &error);
+	struct ufa_list *list_attrs = ufa_repo_getattr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
 		printf("%s\t%s\n", (char *) attr_i->attribute,
 		       (char *) attr_i->value);
 	}
-	ufa_list_free_full(list_attrs, ufa_repo_attr_free);
+	ufa_list_free_full(list_attrs, ufa_repo_attrfree);
 	return !error ? EX_OK : EXIT_FAILURE;
 }
 
@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 				log = 1;
 				enum ufa_log_level level =
 				    ufa_log_level_from_str(optarg);
-				ufa_log_set(level);
+				ufa_log_setlevel(level);
 				ufa_debug("LOG LEVEL: %s\n", optarg);
 			}
 			break;

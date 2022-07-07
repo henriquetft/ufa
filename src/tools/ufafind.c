@@ -68,7 +68,7 @@ static void _add_attr(char *optarg, struct ufa_list **attrs)
 	// finding out which matchmode was used
 	// finding by simple string comparison, so using matchmode with most
 	// characters e.g. "=" is in both matchmodes "=" and "!="
-	for (int x = 0; x < UFA_REPO_MATCH_MODE_TOTAL; x++) {
+	for (int x = 0; x < UFA_REPO_MATCHMODE_TOTAL; x++) {
 		char *str_mm = match_mode_str[x];
 		if (strstr(attr, str_mm) != NULL) {
 			if (mm_index == -1) {
@@ -82,18 +82,18 @@ static void _add_attr(char *optarg, struct ufa_list **attrs)
 
 	if (mm_index != -1) {
 		char *str_mm = match_mode_str[mm_index];
-		enum ufa_repo_match_mode mm =
-		    ufa_repo_match_mode_supported[mm_index];
-		struct ufa_list *parts = ufa_util_str_split(attr, str_mm);
+		enum ufa_repo_matchmode mm =
+		    ufa_repo_matchmode_supported[mm_index];
+		struct ufa_list *parts = ufa_str_split(attr, str_mm);
 		ufa_debug("Adding filter: %s / %s (matchmode: %s)\n",
 			  parts->data, parts->next->data, str_mm);
-		struct ufa_repo_filter_attr *filter = ufa_repo_filter_attr_new(
-		    parts->data, parts->next->data, mm);
+		struct ufa_repo_filterattr *filter =
+		    ufa_repo_filterattr_new(parts->data, parts->next->data, mm);
 		ufa_list_free_full(parts, free);
 		*attrs = ufa_list_append(*attrs, filter);
 	} else {
-		struct ufa_repo_filter_attr *filter =
-		    ufa_repo_filter_attr_new(attr, NULL, UFA_REPO_EQUAL);
+		struct ufa_repo_filterattr *filter =
+		    ufa_repo_filterattr_new(attr, NULL, UFA_REPO_EQUAL);
 		*attrs = ufa_list_append(*attrs, filter);
 	}
 	free(attr);
@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 				log = 1;
 				enum ufa_log_level level =
 				    ufa_log_level_from_str(optarg);
-				ufa_log_set(level);
+				ufa_log_setlevel(level);
 				ufa_debug("LOG LEVEL: %s\n", optarg);
 			}
 			break;
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 end:
 	ufa_error_free(err);
 	free(repository);
-	ufa_list_free_full(attrs, ufa_repo_filter_attr_free);
+	ufa_list_free_full(attrs, ufa_repo_filterattr_free);
 	ufa_list_free_full(tags, free);
 	ufa_list_free_full(result, free);
 	return exit_status;

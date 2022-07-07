@@ -20,13 +20,13 @@
 #include "logging.h"
 #include "misc.h"
 
-int ufa_util_str_startswith(const char *str, const char *prefix)
+int ufa_str_startswith(const char *str, const char *prefix)
 {
 	int x = (strstr(str, prefix) == str);
 	return x;
 }
 
-int ufa_util_str_endswith(const char *str, const char *suffix)
+int ufa_str_endswith(const char *str, const char *suffix)
 {
 	int p = strlen(str) - strlen(suffix);
 	if (p < 0) {
@@ -42,7 +42,7 @@ static char *_join_path(const char *delim, const char *first_element, int args,
 {
 	char *next = (char *)first_element;
 	char *buf = ufa_strdup(next);
-	int ends_with_delim = ufa_util_str_endswith(buf, delim);
+	int ends_with_delim = ufa_str_endswith(buf, delim);
 
 	for (int x = 0; x < args - 1; x++) {
 		/*(next = va_arg(*ap, char*)) != NULL*/
@@ -51,13 +51,12 @@ static char *_join_path(const char *delim, const char *first_element, int args,
 			break;
 		}
 
-		if (!ends_with_delim && !ufa_util_str_startswith(next, delim)) {
+		if (!ends_with_delim && !ufa_str_startswith(next, delim)) {
 			char *temp = ufa_util_strcat(buf, delim);
 			free(buf);
 			buf = temp;
 
-		} else if (ends_with_delim &&
-			   ufa_util_str_startswith(next, delim)) {
+		} else if (ends_with_delim && ufa_str_startswith(next, delim)) {
 			next = next + strlen(delim);
 		}
 
@@ -65,12 +64,12 @@ static char *_join_path(const char *delim, const char *first_element, int args,
 		free(buf);
 		buf = temp;
 
-		ends_with_delim = ufa_util_str_endswith(buf, delim);
+		ends_with_delim = ufa_str_endswith(buf, delim);
 	}
 	return buf;
 }
 
-char *ufa_util_join_path(int args, const char *first_element, ...)
+char *ufa_util_joinpath(int args, const char *first_element, ...)
 {
 	va_list ap;
 	va_start(ap, first_element);
@@ -81,7 +80,22 @@ char *ufa_util_join_path(int args, const char *first_element, ...)
 	return str;
 }
 
-char *ufa_util_join_str(char *delim, int args, const char *first_element, ...)
+/**
+ * Returns the file name of a file path.
+ * It returns a newly allocated string with the last part of the path
+ * (separated by file separador).
+ */
+char *ufa_util_getfilename(const char *filepath)
+{
+	// FIXME rewrite this function
+	struct ufa_list *split = ufa_str_split(filepath, "/"); // FIXME
+	struct ufa_list *last = ufa_list_get_last(split);
+	char *last_part = ufa_strdup((char *)last->data);
+	ufa_list_free_full(split, free);
+	return last_part;
+}
+
+char *ufa_util_joinstr(char *delim, int args, const char *first_element, ...)
 {
 	va_list ap;
 	va_start(ap, first_element);
@@ -91,7 +105,7 @@ char *ufa_util_join_str(char *delim, int args, const char *first_element, ...)
 	return str;
 }
 
-struct ufa_list *ufa_util_str_split(const char *str, const char *delim)
+struct ufa_list *ufa_str_split(const char *str, const char *delim)
 {
 	struct ufa_list *list = NULL;
 
@@ -152,7 +166,7 @@ char *ufa_strdup(const char *str)
 	return strdup(str);
 }
 
-char *ufa_util_str_multiply(const char *str, int times)
+char *ufa_str_multiply(const char *str, int times)
 {
 	// if (times < 0) {
 	//     return NULL;
@@ -168,7 +182,7 @@ char *ufa_util_str_multiply(const char *str, int times)
 	return new_str;
 }
 
-int ufa_util_strcount(const char *str, const char *part)
+int ufa_str_count(const char *str, const char *part)
 {
 	int len_part = strlen(part);
 	int found = 0;
@@ -199,7 +213,7 @@ char *ufa_str_sprintf(char const *format, ...)
 	return result;
 }
 
-void ufa_str_replace_char(char *str, char old, char new)
+void ufa_str_replace(char *str, char old, char new)
 {
 	char *p = str;
 	while ((p = strchr(p, old))) {

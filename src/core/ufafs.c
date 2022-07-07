@@ -133,14 +133,14 @@ static int ufa_fuse_getattr(const char *path, struct stat *stbuf,
 		_copy_stat(stbuf, &stat_repository);
 
 		/* A FILE */
-	} else if ((filepath = ufa_repo_get_file_path(path, NULL)) != NULL) {
+	} else if ((filepath = ufa_repo_get_realfilepath(path, NULL)) != NULL) {
 		ufa_debug(".copying stat from: '%s'", filepath);
 		struct stat st;
 		stat(filepath, &st);
 		_copy_stat(stbuf, &st);
 
 		/* ANOTHER TAG */
-	} else if (ufa_repo_is_a_tag(path, NULL)) {
+	} else if (ufa_repo_isatag(path, NULL)) {
 		_copy_stat(stbuf, &stat_repository);
 	} else {
 		res = -ENOENT;
@@ -161,7 +161,7 @@ static int ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	filler(buf, "..", NULL, 0, 0);
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list = ufa_repo_list_files_for_dir(path, &error);
+	struct ufa_list *list = ufa_repo_listfiles(path, &error);
 	ufa_error_abort(error);
 
 	for (UFA_LIST_EACH(iter, list)) {
@@ -185,7 +185,7 @@ static int ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 static int ufa_fuse_open(const char *path, struct fuse_file_info *fi)
 {
 	ufa_debug("open: '%s' ---> '%s'\n", path,
-		  ufa_repo_get_file_path(path, NULL));
+		  ufa_repo_get_realfilepath(path, NULL));
 
 	if ((fi->flags & O_ACCMODE) != O_RDONLY) {
 		return -EACCES;
@@ -199,7 +199,7 @@ static int ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset,
 			 struct fuse_file_info *fi)
 {
 	/* e.g.: /tag1/real_file.txt */
-	char *filepath = ufa_repo_get_file_path(path, NULL);
+	char *filepath = ufa_repo_get_realfilepath(path, NULL);
 	ufa_debug("read: %s ---> %s (%ld / %lu)", path, filepath, offset, size);
 
 	int res = 0;
@@ -220,14 +220,15 @@ static int ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset,
 	}
 }
 
+
+
 int ufa_fuse_mkdir(const char *path, mode_t mode)
 {
 	ufa_debug("mkdir: %s", path);
-	if (ufa_util_str_startswith(path, "/") &&
-	    ufa_util_strcount(path, "/") == 1) {
-		char *last_part = ufa_repo_get_filename(path);
+	if (ufa_str_startswith(path, "/") && ufa_str_count(path, "/") == 1) {
+		char *last_part = ufa_util_getfilename(path);
 		struct ufa_error *error = NULL;
-		int r = ufa_repo_insert_tag(last_part, &error);
+		int r = ufa_repo_inserttag(last_part, &error);
 		free(last_part);
 		ufa_error_abort(error);
 		if (r == 0) {

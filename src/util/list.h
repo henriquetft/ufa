@@ -1,6 +1,7 @@
 #ifndef UFA_LIST_H_
 #define UFA_LIST_H_
 
+/** Represents a node of the linked list */
 struct ufa_list {
 	void *data;
 	struct ufa_list *next;
@@ -10,10 +11,12 @@ struct ufa_list {
 typedef void (*ufa_list_for_each_func)(void *element, void *user_data);
 typedef void (*ufa_list_free_func)(void *data);
 
+/** Macro to rewind a list back to the first element */
 #define UFA_LIST_REWIND(list)                                                  \
 	for (; (list->prev != NULL); list = list->prev)                        \
 		;
 
+/** Macro to use with FOR statement to iterate over an ufa_list */
 #define UFA_LIST_EACH(iter_var, list_var)                                      \
 	struct ufa_list *iter_var = list_var;                                  \
 	(iter_var != NULL);                                                    \
@@ -41,6 +44,7 @@ struct ufa_list *ufa_list_unlink_node(struct ufa_list *list,
 				      struct ufa_list *node);
 
 void ufa_list_free_full(struct ufa_list *list, ufa_list_free_func freefunc);
+
 
 void ufa_list_free(struct ufa_list *list);
 

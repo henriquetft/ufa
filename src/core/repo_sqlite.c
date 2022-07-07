@@ -65,10 +65,10 @@ struct ufa_repo_conn {
 	char *name;  /* name of the file */
 };
 
-const enum ufa_repo_match_mode ufa_repo_match_mode_supported[] = {
+const enum ufa_repo_matchmode ufa_repo_matchmode_supported[] = {
     UFA_REPO_EQUAL, UFA_REPO_WILDCARD};
 
-static char *ufa_repo_match_mode_sql[] = {"=", "LIKE"};
+static char *ufa_repo_matchmode_sql[] = {"=", "LIKE"};
 static char *repository_path = NULL;
 static struct ufa_repo_conn *conn;
 
@@ -81,7 +81,7 @@ bool _db_prepare(sqlite3_stmt **stmt, char *sql, struct ufa_error **error,
 {
 	int prepare_ret = sqlite3_prepare_v2(conn->db, sql, -1, stmt, NULL);
 	if (prepare_ret != SQLITE_OK) {
-		ufa_error_set(error, UFA_ERROR_DATABASE,
+		ufa_error_new(error, UFA_ERROR_DATABASE,
 			      "error on function %s:   %s", func_name,
 			      sqlite3_errmsg(conn->db));
 		return false;
@@ -95,7 +95,7 @@ static bool _db_execute(sqlite3_stmt *stmt, struct ufa_error **error,
 	bool status = true;
 	int r = sqlite3_step(stmt);
 	if (r != SQLITE_DONE) {
-		ufa_error_set(error, UFA_ERROR_DATABASE,
+		ufa_error_new(error, UFA_ERROR_DATABASE,
 			      "error on function %s:   %s", __func__,
 			      sqlite3_errmsg(conn->db));
 		status = false;
@@ -113,7 +113,7 @@ static char *_sql_arg_list(struct ufa_list *list)
 	if (size == 0) {
 		return ufa_strdup("");
 	}
-	char *sql_args = ufa_util_str_multiply("?,", size);
+	char *sql_args = ufa_str_multiply("?,", size);
 	sql_args[strlen(sql_args) - 1] = '\0';
 	return sql_args;
 }
@@ -153,15 +153,15 @@ static struct ufa_repo_conn *_open_sqlite_conn(const char *file,
 
 error_opening:
 	free(conn);
-	ufa_error_set(error, UFA_ERROR_DATABASE,
+	ufa_error_new(error, UFA_ERROR_DATABASE,
 		      "Error opening SQLite db %s. Returned: %d", file, rc);
 	return NULL;
 error_stat:
-	ufa_error_set(error, UFA_ERROR_FILE, strerror(errno));
+	ufa_error_new(error, UFA_ERROR_FILE, strerror(errno));
 	free(conn);
 	return NULL;
 error_create_table:
-	ufa_error_set(error, UFA_ERROR_DATABASE, "error creating tables: %s",
+	ufa_error_new(error, UFA_ERROR_DATABASE, "error creating tables: %s",
 		      sqlite3_errmsg(conn->db));
 	sqlite3_free(errmsg);
 	sqlite3_close(conn->db);
@@ -355,6 +355,7 @@ end:
 
 static int _get_file_id_by_name(const char *filename, struct ufa_error **error)
 {
+	ufa_debug("%s: %s", __func__, filename);
 	char *filepath = NULL;
 	int file_id = 0;
 	char *sql = "SELECT f.id FROM file f WHERE f.name = ?";
@@ -372,13 +373,14 @@ static int _get_file_id_by_name(const char *filename, struct ufa_error **error)
 	}
 
 	if (!file_id) {
-		filepath = ufa_util_join_path(2, repository_path, filename);
+		filepath = ufa_util_joinpath(2, repository_path, filename);
 		if (ufa_util_isfile(filepath)) {
 			ufa_debug(
 			    "File '%s' needs to be inserted on file table",
 			    filename);
 			file_id = _insert_file(filename, error);
 			if (file_id == -1) {
+				ufa_error("Error inserting on db, file '%s'");
 				goto end;
 			}
 		}
@@ -412,7 +414,7 @@ static bool _set_tag_on_file(int file_id, int tag_id, struct ufa_error **error)
 		status = true;
 		ufa_debug("file tagged");
 	} else {
-		ufa_error_set(error, UFA_ERROR_DATABASE,
+		ufa_error_new(error, UFA_ERROR_DATABASE,
 			      "sqlite returned on insert file_tag: %d", r);
 		goto end;
 	}
@@ -423,8 +425,9 @@ end:
 
 static void _create_repo_indicator_file(char *repository)
 {
-	char *filepath =
-	    ufa_util_join_path(2, repository, REPOSITORY_INDICATOR_FILE_NAME);
+	char *filepath = ufa_util_joinpath(2,
+					   repository,
+					   REPOSITORY_INDICATOR_FILE_NAME);
 	if (ufa_util_isfile(filepath)) {
 		goto end;
 	}
@@ -443,12 +446,13 @@ end:
 
 int _get_file_id(const char *filepath, struct ufa_error **error)
 {
-	int file_id = _get_file_id_by_name(filepath, error);
+	char *filename = ufa_util_getfilename(filepath);
+	int file_id = _get_file_id_by_name(filename, error);
 	if (file_id < 0) {
 		return 0;
 	} else if (file_id == 0) {
-		ufa_error_set(error, UFA_ERROR_STATE,
-			      "file '%s' does not exist", filepath);
+		ufa_error_new(error, UFA_ERROR_STATE,
+			      "file '%s' does not exist", filename);
 	}
 	return file_id;	
 }
@@ -457,31 +461,16 @@ int _get_file_id(const char *filepath, struct ufa_error **error)
 /* FUNCTIONS FROM repo.h                                                      */
 /* ========================================================================== */
 
-/**
- * Returns the file name of a file path.
- * It returns a newly allocated string with the last part of the path
- * (separated by file separador).
- */
-char *ufa_repo_get_filename(const char *filepath)
-{
-	struct ufa_list *split =
-	    ufa_util_str_split(filepath, UFA_FILE_SEPARATOR);
-	struct ufa_list *last = ufa_list_get_last(split);
-	char *last_part = ufa_strdup((char *)last->data);
-	ufa_list_free_full(split, free);
-	return last_part;
-}
-
 bool ufa_repo_init(const char *repository, struct ufa_error **error)
 {
 	if (!ufa_util_isdir(repository)) {
-		ufa_error_set(error, UFA_ERROR_NOTDIR, "error: %s is not a dir",
+		ufa_error_new(error, UFA_ERROR_NOTDIR, "error: %s is not a dir",
 			      repository);
 		return false;
 	}
 	repository_path = ufa_strdup(repository);
 	char *filepath =
-	    ufa_util_join_path(2, repository_path, REPOSITORY_FILENAME);
+	    ufa_util_joinpath(2, repository_path, REPOSITORY_FILENAME);
 	ufa_debug("Initializing repo %s", filepath);
 	conn = _open_sqlite_conn(filepath, error);
 	if (error != NULL) {
@@ -492,7 +481,7 @@ bool ufa_repo_init(const char *repository, struct ufa_error **error)
 	return true;
 }
 
-struct ufa_list *ufa_get_all_tags(struct ufa_error **error)
+struct ufa_list *ufa_listtags(struct ufa_error **error)
 {
 	struct ufa_list *all_tags = NULL;
 	int rows = 0;
@@ -524,7 +513,7 @@ sqlite_error:
 		ufa_list_free_full(head, free);
 	}
 	ufa_error("Sqlite3 error: %d (%s)", sql_ret, err);
-	ufa_error_set(error, UFA_ERROR_DATABASE, "Sqlite3 error: %d: %s",
+	ufa_error_new(error, UFA_ERROR_DATABASE, "Sqlite3 error: %d: %s",
 		      sql_ret, err);
 	sqlite3_free(err);
 	sqlite3_free(sql);
@@ -533,22 +522,23 @@ sqlite_error:
 
 /**
  * Checks whether a path is a tag.
- * E.g.: tag1/tag2/tag3 or tag1/tag2/file.
+ * E.g.: /tag1/tag2/tag3 or /tag1/tag2/file.
  */
-bool ufa_repo_is_a_tag(const char *path, struct ufa_error **error)
+bool ufa_repo_isatag(const char *path, struct ufa_error **error)
 {
-	char *last_part = ufa_repo_get_filename(path);
-	bool ret = (ufa_repo_get_file_path(path, NULL) == NULL &&
+	char *last_part = ufa_util_getfilename(path);
+	bool ret = (ufa_repo_get_realfilepath(path, NULL) == NULL &&
 		    _get_tag_id_by_name(last_part, error) > 0);
 	free(last_part);
 	return ret;
 }
 
-char *ufa_repo_get_file_path(const char *path, struct ufa_error **error)
+char *ufa_repo_get_realfilepath(const char *path, struct ufa_error **error)
 {
 	/* FIXME remove error? */
+	// FIXME check if filepath is in repo?
 	char *result = NULL;
-	char *last_part = ufa_repo_get_filename(path);
+	char *last_part = ufa_util_getfilename(path);
 	char *filepath = ufa_str_sprintf("%s%s%s", repository_path,
 					 UFA_FILE_SEPARATOR, last_part);
 
@@ -563,15 +553,15 @@ char *ufa_repo_get_file_path(const char *path, struct ufa_error **error)
 	return result;
 }
 
-struct ufa_list *ufa_repo_list_files_for_dir(const char *path,
-					     struct ufa_error **error)
+struct ufa_list *ufa_repo_listfiles(const char *dirpath,
+				    struct ufa_error **error)
 {
 	struct ufa_list *list = NULL;
-	if (ufa_util_strequals(path, "/")) {
+	if (ufa_util_strequals(dirpath, "/")) {
 		/* FIXME cache. it is better to clone all_tags */
-		list = ufa_get_all_tags(error);
+		list = ufa_listtags(error);
 	} else {
-		struct ufa_list *list_of_tags = ufa_util_str_split(path, "/");
+		struct ufa_list *list_of_tags = ufa_str_split(dirpath, "/");
 		// get all files with tags
 		list = _get_files_with_tags(list_of_tags, error);
 		ufa_list_free_full(list_of_tags, free);
@@ -583,9 +573,10 @@ struct ufa_list *ufa_repo_list_files_for_dir(const char *path,
 }
 
 /* TODO use error argument and returns the list */
-bool ufa_repo_get_tags_for_file(const char *filepath, struct ufa_list **list,
-				struct ufa_error **error)
+bool ufa_repo_gettags(const char *filepath, struct ufa_list **list,
+		      struct ufa_error **error)
 {
+	ufa_debug("%s: '%s'", __func__, filepath);
 	bool status = false;
 	char *filename = NULL;
 	sqlite3_stmt *stmt = NULL;
@@ -595,7 +586,7 @@ bool ufa_repo_get_tags_for_file(const char *filepath, struct ufa_list **list,
 		goto end;
 	}
 
-	filename = ufa_repo_get_filename(filepath);
+	filename = ufa_util_getfilename(filepath);
 	ufa_debug("Listing tags for filename: %s (%s)", filename, filepath);
 	char *sql = "SELECT DISTINCT t.name FROM file_tag ft, tag t "
 		    "WHERE ft.id_tag = t.id AND ft.id_file=? ORDER BY t.name";
@@ -620,7 +611,7 @@ end:
 /**
  * Negative values on error
  */
-int ufa_repo_insert_tag(const char *tag, struct ufa_error **error)
+int ufa_repo_inserttag(const char *tag, struct ufa_error **error)
 {
 	int tag_id = _get_tag_id_by_name(tag, error);
 	sqlite3_stmt *stmt = NULL;
@@ -636,25 +627,21 @@ int ufa_repo_insert_tag(const char *tag, struct ufa_error **error)
 	return tag_id;
 }
 
-bool ufa_repo_set_tag_on_file(const char *filepath, const char *tag,
-			      struct ufa_error **error)
+bool ufa_repo_settag(const char *filepath, const char *tag,
+		     struct ufa_error **error)
 {
 	ufa_debug("Setting tag '%s' for file '%s'", tag, filepath);
 
 	bool status = false;
-	char *filename = ufa_repo_get_filename(filepath);
+	char *filename = ufa_util_getfilename(filepath);
 
-	int tag_id = ufa_repo_insert_tag(tag, error);
+	int tag_id = ufa_repo_inserttag(tag, error);
 	if (tag_id < 0) {
 		goto end;
 	}
 
-	int file_id = _get_file_id_by_name(filename, error);
-	if (file_id < 0) {
-		goto end;
-	} else if (file_id == 0) {
-		ufa_error_set(error, UFA_ERROR_STATE,
-			      "file '%s' does not exist", filepath);
+	int file_id;
+	if (!(file_id = _get_file_id(filepath, error))) {
 		goto end;
 	}
 
@@ -664,8 +651,7 @@ end:
 	return status;
 }
 
-bool ufa_repo_clear_tags_for_file(const char *filepath,
-				  struct ufa_error **error)
+bool ufa_repo_cleartags(const char *filepath, struct ufa_error **error)
 {
 	int r = 0;
 	bool status = false;
@@ -694,8 +680,8 @@ end:
 	return status;
 }
 
-bool ufa_repo_unset_tag_on_file(const char *filepath, const char *tag,
-				struct ufa_error **error)
+bool ufa_repo_unsettag(const char *filepath, const char *tag,
+		       struct ufa_error **error)
 {
 	bool status = 0;
 	sqlite3_stmt *stmt = NULL;
@@ -725,18 +711,18 @@ end:
 	return status;
 }
 
-struct ufa_repo_filter_attr *
-ufa_repo_filter_attr_new(const char *attribute, const char *value,
-			 enum ufa_repo_match_mode match_mode)
+struct ufa_repo_filterattr *
+ufa_repo_filterattr_new(const char *attribute, const char *value,
+			 enum ufa_repo_matchmode match_mode)
 {
-	struct ufa_repo_filter_attr *ptr = calloc(1, sizeof *ptr);
+	struct ufa_repo_filterattr *ptr = calloc(1, sizeof *ptr);
 	ptr->attribute = ufa_strdup(attribute);
 	ptr->value = (value == NULL) ? NULL : ufa_strdup(value);
-	ptr->match_mode = match_mode;
+	ptr->matchmode = match_mode;
 	return ptr;
 }
 
-void ufa_repo_filter_attr_free(struct ufa_repo_filter_attr *filter)
+void ufa_repo_filterattr_free(struct ufa_repo_filterattr *filter)
 {
 	if (filter != NULL) {
 		free(filter->attribute);
@@ -758,16 +744,16 @@ char *_generate_sql_search_attrs(struct ufa_list *filter_attr)
 	const char *sql_without_value = "(a.name = ?)";
 	for (UFA_LIST_EACH(iter_attr, filter_attr)) {
 		/* read iter_attr->next to implement properly */
-		if (((struct ufa_repo_filter_attr *)iter_attr->data)->value ==
+		if (((struct ufa_repo_filterattr *)iter_attr->data)->value ==
 		    NULL) {
 			strcat(new_str, sql_without_value);
 		} else {
 			char *str = ufa_str_sprintf(
 			    sql_with_value,
-			    ufa_repo_match_mode_sql
-				[((struct ufa_repo_filter_attr *)
+			    ufa_repo_matchmode_sql[((struct ufa_repo_filterattr
+							  *)
 				      iter_attr->data)
-				     ->match_mode]);
+				     ->matchmode]);
 			strcat(new_str, str);
 			free(str);
 		}
@@ -818,7 +804,7 @@ struct ufa_list *ufa_repo_search(struct ufa_list *filter_attr,
 	int count_attrs = ufa_list_size(filter_attr);
 
 	if (count_tags == 0 && count_attrs == 0) {
-		ufa_error_set(error, UFA_ERROR_ARGS,
+		ufa_error_new(error, UFA_ERROR_ARGS,
 			      "you must search for tags or attributes");
 		return NULL;
 	}
@@ -867,13 +853,13 @@ struct ufa_list *ufa_repo_search(struct ufa_list *filter_attr,
 	// filling attrs parameters
 	if (count_attrs) {
 		for (UFA_LIST_EACH(i, filter_attr)) {
-			struct ufa_repo_filter_attr *attr =
-			    (struct ufa_repo_filter_attr *)i->data;
+			struct ufa_repo_filterattr *attr =
+			    (struct ufa_repo_filterattr *)i->data;
 			sqlite3_bind_text(stmt, x++, attr->attribute, -1, NULL);
 			if (attr->value != NULL) {
 				char *value = ufa_strdup(attr->value);
-				if (attr->match_mode == UFA_REPO_WILDCARD) {
-					ufa_str_replace_char(value, '*', '%');
+				if (attr->matchmode == UFA_REPO_WILDCARD) {
+					ufa_str_replace(value, '*', '%');
 				}
 				sqlite3_bind_text(stmt, x++, value, -1,
 						  SQLITE_TRANSIENT);
@@ -900,7 +886,7 @@ end:
 	return result_list_names;
 }
 
-bool ufa_repo_set_attr(const char *filepath, const char *attribute,
+bool ufa_repo_setattr(const char *filepath, const char *attribute,
 		       const char *value, struct ufa_error **error)
 {
 	sqlite3_stmt *stmt = NULL;
@@ -940,7 +926,7 @@ end:
 
 
 
-bool ufa_repo_unset_attr(const char *filepath, const char *attribute,
+bool ufa_repo_unsetattr(const char *filepath, const char *attribute,
 			 struct ufa_error **error)
 {
 	sqlite3_stmt *stmt = NULL;
@@ -972,8 +958,8 @@ end:
 	return status;
 }
 
-struct ufa_list *ufa_repo_get_attr(const char *filepath,
-				   struct ufa_error **error)
+struct ufa_list *ufa_repo_getattr(const char *filepath,
+				  struct ufa_error **error)
 {
 	struct ufa_list *result_list_attrs = NULL;
 	sqlite3_stmt *stmt = NULL;
@@ -1009,7 +995,7 @@ end:
 	return result_list_attrs;
 }
 
-void ufa_repo_attr_free(struct ufa_repo_attr *attr)
+void ufa_repo_attrfree(struct ufa_repo_attr *attr)
 {
 	if (attr) {
 		free(attr->attribute);

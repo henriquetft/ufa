@@ -157,7 +157,7 @@ static int handle_set()
 	char *new_tag = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_set_tag_on_file(file, new_tag, &error);
+	bool is_ok = ufa_repo_settag(file, new_tag, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -174,7 +174,7 @@ static int handle_unset()
 	char *tag = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_unset_tag_on_file(file, tag, &error);
+	bool is_ok = ufa_repo_unsettag(file, tag, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -192,7 +192,7 @@ static int handle_list()
 	/* FIXME must fail if file does not exist */
 	struct ufa_list *list = NULL;
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_get_tags_for_file(arg, &list, &error);
+	bool is_ok = ufa_repo_gettags(arg, &list, &error);
 	int ret;
 
 	if (is_ok) {
@@ -222,7 +222,7 @@ static int handle_clear()
 	char *file = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_clear_tags_for_file(file, &error);
+	bool is_ok = ufa_repo_cleartags(file, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -235,7 +235,7 @@ static int handle_list_all()
 {
 	int ret;
 	struct ufa_error *error = NULL;
-	struct ufa_list *list = ufa_get_all_tags(&error);
+	struct ufa_list *list = ufa_listtags(&error);
 	bool is_ok = (error == NULL);
 	if (is_ok) {
 		for (UFA_LIST_EACH(iter, list)) {
@@ -263,7 +263,7 @@ static int handle_create()
 	char *tag = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = (ufa_repo_insert_tag(tag, &error) > 0);
+	bool is_ok = (ufa_repo_inserttag(tag, &error) > 0);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
 				log = 1;
 				enum ufa_log_level level =
 				    ufa_log_level_from_str(optarg);
-				ufa_log_set(level);
+				ufa_log_setlevel(level);
 				ufa_debug("LOG LEVEL: %s\n", optarg);
 			}
 			break;

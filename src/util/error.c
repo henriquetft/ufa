@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void ufa_error_set(struct ufa_error **error, int code, char *message, ...)
+void ufa_error_new(struct ufa_error **error, int code, char *format, ...)
 {
 	if (error == NULL) {
 		return;
 	}
 	va_list ap;
-	va_start(ap, message);
-	char *m = ufa_str_vprintf(message, ap);
+	va_start(ap, format);
+	char *m = ufa_str_vprintf(format, ap);
 	va_end(ap);
 	struct ufa_error *err = malloc(sizeof *err);
 	err->code = code;

@@ -54,12 +54,12 @@ enum ufa_log_level ufa_log_level_from_str(char *level)
 	return UFA_LOG_OFF;
 }
 
-void ufa_log_set(enum ufa_log_level level)
+void ufa_log_setlevel(enum ufa_log_level level)
 {
 	loglevel = level;
 }
 
-enum ufa_log_level ufa_log_get()
+enum ufa_log_level ufa_log_getlevel()
 {
 	return loglevel;
 }

@@ -26,8 +26,8 @@ void ufa_fatal(char *format, ...);
 
 enum ufa_log_level ufa_log_level_from_str(char *level);
 
-void ufa_log_set(enum ufa_log_level level);
+void ufa_log_setlevel(enum ufa_log_level level);
 
-enum ufa_log_level ufa_log_get();
+enum ufa_log_level ufa_log_getlevel();
 
 #endif /* LOGGING_H_ */
