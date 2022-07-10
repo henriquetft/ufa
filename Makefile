@@ -5,7 +5,10 @@
 
 include Makedefs
 
-CFLAGS += -I"src" -I"/usr/include" -I/usr/include/fuse3
+CFLAGS += -I"src"
+CFLAGS += `pkg-config --cflags fuse3 sqlite3`
+LDFLAGS += `pkg-config --libs fuse3 sqlite3`
+
 
 # these vars will be modified by the other makefiles
 SOURCES :=
@@ -35,10 +38,10 @@ all : $(PROGRAMS)
 	@echo Project built successfully!
  
 dist :
-	@echo "create a tarball"
+	@echo "Create a tarball"
 	
 doc :
-	@echo "generating source code documentation"
+	@echo "Generating source code documentation"
 	
 
 clean :
@@ -49,5 +52,5 @@ clean :
 %.o: %.c
 	$(call make-depend,$<,$@,$(subst .o,.d,$@))
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
-	
+
 
