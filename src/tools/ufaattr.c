@@ -97,7 +97,7 @@ static void print_usage(FILE *stream)
 		"  unset\t\tUnset attributes on file\n"
 		"  get\t\tGet the value of an attribute\n"
 		"  list\t\tList attributes of a file\n"
-		"  describe\t\tList attributes and values of a file\n"
+		"  describe\tList attributes and values of a file\n"
 		"\n"
 		"Run '%s COMMAND -h' for more information on a command.\n"
 		"\n",
