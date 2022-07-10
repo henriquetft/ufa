@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
 
 	int opt;
 	char *repository = NULL;
+	struct ufa_error *err = NULL;
 	char *tag = NULL;
 
 	struct ufa_list *attrs = NULL;
@@ -177,8 +178,6 @@ int main(int argc, char *argv[])
 		exit_status = EXIT_FAILURE;
 		goto end;
 	}
-
-	struct ufa_error *err = NULL;
 
 	if (!ufa_repo_init(repository, &err)) {
 		ufa_error_print_and_free(err);
