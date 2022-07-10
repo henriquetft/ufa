@@ -32,19 +32,27 @@
 static void *ufa_fuse_init(struct fuse_conn_info *conn,
 			   struct fuse_config *cfg);
 
-static int ufa_fuse_getattr(const char *path, struct stat *stbuf,
+static int ufa_fuse_getattr(const char *path,
+			    struct stat *stbuf,
 			    struct fuse_file_info *fi);
 
-static int ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-			    off_t offset, struct fuse_file_info *fi,
+static int ufa_fuse_readdir(const char *path,
+			    void *buf,
+			    fuse_fill_dir_t filler,
+			    off_t offset,
+			    struct fuse_file_info *fi,
 			    enum fuse_readdir_flags flags);
 
-static int ufa_fuse_open(const char *path, struct fuse_file_info *fi);
-
-static int ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset,
+static int ufa_fuse_open(const char *path,
 			 struct fuse_file_info *fi);
 
-int ufa_fuse_mkdir(const char *path, mode_t mode);
+static int ufa_fuse_read(const char *path,
+			 char *buf,
+			 size_t size,
+			 off_t offset,
+			 struct fuse_file_info *fi);
+
+static int ufa_fuse_mkdir(const char *path, mode_t mode);
 
 /* Mapping File system operations */
 static const struct fuse_operations ufa_fuse_oper = {
@@ -63,6 +71,7 @@ static const struct fuse_operations ufa_fuse_oper = {
 /* Command-line options data */
 static struct options {
 	const char *repository;
+	char *log_level;
 	int show_help;
 } options;
 
@@ -77,6 +86,7 @@ static struct stat stat_repository;
 /* Command-line options */
 static const struct fuse_opt option_spec[] = {
     OPTION("--repository=%s", repository), OPTION("-h", show_help),
+    OPTION("--log=%s", log_level), OPTION("-l %s", log_level),
     OPTION("--help", show_help), FUSE_OPT_END};
 
 /* ========================================================================== */
@@ -119,7 +129,8 @@ static void *ufa_fuse_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
 	return NULL;
 }
 
-static int ufa_fuse_getattr(const char *path, struct stat *stbuf,
+static int ufa_fuse_getattr(const char *path,
+			    struct stat *stbuf,
 			    struct fuse_file_info *fi)
 {
 	ufa_debug("getattr: '%s'", path);
@@ -150,8 +161,11 @@ static int ufa_fuse_getattr(const char *path, struct stat *stbuf,
 	return res;
 }
 
-static int ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-			    off_t offset, struct fuse_file_info *fi,
+static int ufa_fuse_readdir(const char *path,
+			    void *buf,
+			    fuse_fill_dir_t filler,
+			    off_t offset,
+			    struct fuse_file_info *fi,
 			    enum fuse_readdir_flags flags)
 {
 	ufa_debug("readdir: '%s'", path);
@@ -182,7 +196,8 @@ static int ufa_fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	return res;
 }
 
-static int ufa_fuse_open(const char *path, struct fuse_file_info *fi)
+static int ufa_fuse_open(const char *path,
+			 struct fuse_file_info *fi)
 {
 	ufa_debug("open: '%s' ---> '%s'\n", path,
 		  ufa_repo_get_realfilepath(path, NULL));
@@ -195,7 +210,10 @@ static int ufa_fuse_open(const char *path, struct fuse_file_info *fi)
 	return 0;
 }
 
-static int ufa_fuse_read(const char *path, char *buf, size_t size, off_t offset,
+static int ufa_fuse_read(const char *path,
+			 char *buf,
+			 size_t size,
+			 off_t offset,
 			 struct fuse_file_info *fi)
 {
 	/* e.g.: /tag1/real_file.txt */
@@ -242,16 +260,22 @@ int ufa_fuse_mkdir(const char *path, mode_t mode)
 	}
 }
 
-// ./ufafs -s --repository=/home/henrique/files -f /home/henrique/teste
+// ./ufafs -f -s --repository=/home/henrique/files /home/henrique/teste
 int main(int argc, char *argv[])
 {
+	ufa_debug("Initializing UFA FUSE Filesystem ...");
+
 	if (getuid() == 0 || geteuid() == 0) {
 		fprintf(stderr,
 			"For security reasons you cannot run %s as root\n",
 			argv[0]);
 		return 1;
 	}
-	ufa_debug("Initializing UFA FUSE Filesystem ...");
+
+	// initializing struct
+	options.repository = NULL;
+	options.log_level = NULL;
+	options.show_help = 0;
 
 	int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
@@ -264,6 +288,17 @@ int main(int argc, char *argv[])
 		_show_help(argv[0]);
 		fuse_opt_add_arg(&args, "--help");
 		args.argv[0][0] = '\0';
+	}
+
+	if (options.repository == NULL) {
+		fprintf(stderr, "Repository must be specified\n");
+		return -1;
+	}
+
+	if (options.log_level) {
+		enum ufa_log_level level =
+		    ufa_log_level_from_str(options.log_level);
+		ufa_log_setlevel(level);
 	}
 
 	bool init = ufa_repo_init(options.repository, NULL);
