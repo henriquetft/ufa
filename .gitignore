@@ -4,6 +4,8 @@
 *.o
 .vscode/
 .idea/
+cmake-build-*/
+build/
 DONTCOMMIT.txt
 ufafind
 ufafs
