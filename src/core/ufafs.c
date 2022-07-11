@@ -54,21 +54,21 @@ static int ufa_fuse_read(const char *path,
 
 static int ufa_fuse_mkdir(const char *path, mode_t mode);
 
-/* Mapping File system operations */
+/** Maps File system operations on FUSE */
 static const struct fuse_operations ufa_fuse_oper = {
-    .init = ufa_fuse_init,
-    .getattr = ufa_fuse_getattr,
-    .readdir = ufa_fuse_readdir,
-    .open = ufa_fuse_open,
-    .read = ufa_fuse_read,
-    .mkdir = ufa_fuse_mkdir,
+	.init = ufa_fuse_init,
+	.getattr = ufa_fuse_getattr,
+	.readdir = ufa_fuse_readdir,
+	.open = ufa_fuse_open,
+	.read = ufa_fuse_read,
+	.mkdir = ufa_fuse_mkdir,
 };
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
-/* Command-line options data */
+/** Command-line options data */
 static struct options {
 	const char *repository;
 	char *log_level;
@@ -83,11 +83,15 @@ static struct options {
 /* File attributes about repository path */
 static struct stat stat_repository;
 
-/* Command-line options */
+/** Command-line options */
 static const struct fuse_opt option_spec[] = {
-    OPTION("--repository=%s", repository), OPTION("-h", show_help),
-    OPTION("--log=%s", log_level), OPTION("-l %s", log_level),
-    OPTION("--help", show_help), FUSE_OPT_END};
+    OPTION("--repository=%s", repository),
+    OPTION("-h", show_help),
+    OPTION("--log=%s", log_level),
+    OPTION("-l %s", log_level),
+    OPTION("--help", show_help),
+    FUSE_OPT_END
+};
 
 /* ========================================================================== */
 /* AUXILIARY FUNCTIONS                                                        */
@@ -288,6 +292,7 @@ int main(int argc, char *argv[])
 		_show_help(argv[0]);
 		fuse_opt_add_arg(&args, "--help");
 		args.argv[0][0] = '\0';
+        goto fuse;
 	}
 
 	if (options.repository == NULL) {
@@ -311,11 +316,15 @@ int main(int argc, char *argv[])
 
 	stat(options.repository, &stat_repository);
 
+    fuse:
 	ufa_debug("Calling fuse_main ...");
 	ret = fuse_main(args.argc, args.argv, &ufa_fuse_oper, NULL);
-	printf("fuse_main returned: %d\n", ret);
 
-	ufa_debug("Exiting ...");
+    if (!options.show_help) {
+        printf("fuse_main returned: %d\n", ret);
+        ufa_debug("Exiting ...");
+    }
+
 	fuse_opt_free_args(&args);
 
 	return ret;
