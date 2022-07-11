@@ -5,10 +5,7 @@ set(CMAKE_C_STANDARD 99)
 
 
 include(FindPkgConfig)
-include(PrintVariables.cmake)
 
-
-print_variables()
 
 # Choosing directory of generated binaries
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
