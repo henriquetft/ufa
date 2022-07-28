@@ -26,7 +26,7 @@ void ufa_error_free(struct ufa_error *error)
 	}
 }
 
-void ufa_error_abort(struct ufa_error *error)
+void ufa_error_abort(const struct ufa_error *error)
 {
 	if (error != NULL) {
 		fprintf(stderr, "error: %s\n", error->message);
@@ -35,15 +35,27 @@ void ufa_error_abort(struct ufa_error *error)
 	}
 }
 
-void ufa_error_print(struct ufa_error *error)
+void ufa_error_print_prefix(const struct ufa_error *error, const char *prefix)
 {
 	if (error != NULL) {
-		fprintf(stderr, "error: %s\n", error->message);
+		fprintf(stderr, "%s: %s\n", prefix, error->message);
 	}
+}
+
+void ufa_error_print(const struct ufa_error *error)
+{
+	ufa_error_print_prefix(error, "error");
 }
 
 void ufa_error_print_and_free(struct ufa_error *error)
 {
 	ufa_error_print(error);
+	ufa_error_free(error);
+}
+
+void ufa_error_print_and_free_prefix(struct ufa_error *error,
+				     const char *prefix)
+{
+	ufa_error_print_prefix(error, prefix);
 	ufa_error_free(error);
 }
