@@ -1,0 +1,6 @@
+The UFA contrib tree
+---------------------
+
+This subtree contains tools, plug-ins and extensions that are not
+part of the core UFA system. This include parts that are not suitable
+for every user.
