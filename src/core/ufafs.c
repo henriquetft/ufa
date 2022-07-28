@@ -12,7 +12,6 @@
 #include "util/list.h"
 #include "util/logging.h"
 #include "util/misc.h"
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
@@ -22,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 /* ========================================================================== */
@@ -316,16 +314,16 @@ int main(int argc, char *argv[])
 
 	stat(options.repository, &stat_repository);
 
-    fuse:
+fuse:
 	ufa_debug("Calling fuse_main ...");
 	ret = fuse_main(args.argc, args.argv, &ufa_fuse_oper, NULL);
 
-    if (!options.show_help) {
-        printf("fuse_main returned: %d\n", ret);
-        ufa_debug("Exiting ...");
-    }
+	if (!options.show_help) {
+		printf("fuse_main returned: %d\n", ret);
+		ufa_debug("Exiting ...");
+    	}
 
-	fuse_opt_free_args(&args);
+    	fuse_opt_free_args(&args);
 
 	return ret;
 }
