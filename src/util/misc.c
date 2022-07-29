@@ -7,23 +7,20 @@
  * For the terms of usage and distribution, please see COPYING file.
  */
 
-#include <dirent.h>
+#include "misc.h"
+#include "error.h"
+#include "list.h"
+#include <ctype.h>
+#include <errno.h>
 #include <linux/limits.h>
+#include <pwd.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <pwd.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <ctype.h>
-
-#include "error.h"
-#include "list.h"
-#include "logging.h"
-#include "misc.h"
 
 int ufa_str_startswith(const char *str, const char *prefix)
 {
