@@ -2,7 +2,10 @@
 #define MISC_H_
 
 #include "list.h"
+#include "error.h"
 #include <stdarg.h>
+#include <stdbool.h>
+
 
 #define UFA_FILE_SEPARATOR "/"
 
@@ -13,7 +16,7 @@
  * e.g. for (UFA_ARRAY_EACH(i, array)) { ... }*/
 #define UFA_ARRAY_EACH(i, arr) size_t i = 0; i < ARRAY_SIZE(arr); i++
 
-char *ufa_util_joinpath(int args, const char *first_element, ...);
+char *ufa_util_joinpath(const char *first_element, ...);
 
 /**
  * Returns the file name of a file path.
@@ -21,8 +24,6 @@ char *ufa_util_joinpath(int args, const char *first_element, ...);
  * (separated by file separador).
  */
 char *ufa_util_getfilename(const char *filepath);
-
-char *ufa_util_joinstr(char *delim, int args, const char *first_element, ...);
 
 char *ufa_util_strcat(const char *str1, const char *str2);
 
@@ -33,6 +34,12 @@ int ufa_util_isdir(const char *filename);
 int ufa_util_isfile(const char *filename);
 
 char *ufa_util_get_current_dir();
+
+char *ufa_util_get_home_dir();
+
+char *ufa_util_config_dir(const char *appname);
+
+bool ufa_util_mkdir(char *dir, struct ufa_error **error);
 
 struct ufa_list *ufa_str_split(const char *str, const char *delim);
 
@@ -51,5 +58,11 @@ char *ufa_str_vprintf(char const *format, va_list ap);
 char *ufa_str_sprintf(char const *format, ...);
 
 void ufa_str_replace(char *str, char old, char new);
+
+char *ufa_str_ltrim(char *s);
+
+char *ufa_str_rtrim(char *s);
+
+char *ufa_str_trim(char *s);
 
 #endif /* MISC_H_ */

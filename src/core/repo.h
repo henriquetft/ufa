@@ -1,5 +1,5 @@
-#ifndef REPO_H_
-#define REPO_H_
+#ifndef UFA_REPO_H_
+#define UFA_REPO_H_
 
 #include "util/error.h"
 #include "util/list.h"
@@ -84,4 +84,4 @@ struct ufa_list *ufa_repo_getattr(const char *filepath,
 
 void ufa_repo_attrfree(struct ufa_repo_attr *attr);
 
-#endif /* REPO_H_ */
+#endif /* UFA_REPO_H_ */

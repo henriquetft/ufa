@@ -3,4 +3,5 @@ add_library(ufa-util
         list.c
         logging.c
         misc.c
+        hashtable.c
         )

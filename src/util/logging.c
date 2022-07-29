@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-static int loglevel = UFA_LOG_OFF;
+static int loglevel = UFA_LOG_DEBUG;
 
 #define IS_VALID_LOG_LEVEL(level)                                              \
 	(level >= UFA_LOG_DEBUG && level <= UFA_LOG_FATAL)

@@ -373,7 +373,7 @@ static int _get_file_id_by_name(const char *filename, struct ufa_error **error)
 	}
 
 	if (!file_id) {
-		filepath = ufa_util_joinpath(2, repository_path, filename);
+		filepath = ufa_util_joinpath(repository_path, filename, NULL);
 		if (ufa_util_isfile(filepath)) {
 			ufa_debug(
 			    "File '%s' needs to be inserted on file table",
@@ -425,9 +425,9 @@ end:
 
 static void _create_repo_indicator_file(char *repository)
 {
-	char *filepath = ufa_util_joinpath(2,
-					   repository,
-					   REPOSITORY_INDICATOR_FILE_NAME);
+	char *filepath = ufa_util_joinpath(repository,
+					   REPOSITORY_INDICATOR_FILE_NAME,
+					   NULL);
 	if (ufa_util_isfile(filepath)) {
 		goto end;
 	}
@@ -470,7 +470,7 @@ bool ufa_repo_init(const char *repository, struct ufa_error **error)
 	}
 	repository_path = ufa_strdup(repository);
 	char *filepath =
-	    ufa_util_joinpath(2, repository_path, REPOSITORY_FILENAME);
+	    ufa_util_joinpath(repository_path, REPOSITORY_FILENAME, NULL);
 	ufa_debug("Initializing repo %s", filepath);
 	conn = _open_sqlite_conn(filepath, error);
 	if (error != NULL) {

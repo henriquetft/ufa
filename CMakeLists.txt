@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.22)
 project(ufa C)
 set(CMAKE_C_STANDARD 99)
 
-
 include(FindPkgConfig)
 
 
@@ -14,6 +13,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 pkg_check_modules(FUSE REQUIRED fuse3)
 pkg_check_modules(SQLITE REQUIRED sqlite3)
 
+# POSIX Threads
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # Root of include directories
 include_directories(src/)
 
@@ -21,10 +24,3 @@ include_directories(src/)
 add_subdirectory(src/util)
 add_subdirectory(src/core)
 add_subdirectory(src/tools)
-
-
-
-
-
-
-

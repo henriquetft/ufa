@@ -15,7 +15,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <stdbool.h>
+#include <errno.h>
+#include <ctype.h>
 
+#include "error.h"
 #include "list.h"
 #include "logging.h"
 #include "misc.h"
@@ -37,19 +42,15 @@ int ufa_str_endswith(const char *str, const char *suffix)
 	return r;
 }
 
-static char *_join_path(const char *delim, const char *first_element, int args,
-			va_list *ap)
+static char *_join_path(const char *delim,
+			 const char *first_element,
+			 va_list *ap)
 {
 	char *next = (char *)first_element;
 	char *buf = ufa_strdup(next);
 	int ends_with_delim = ufa_str_endswith(buf, delim);
 
-	for (int x = 0; x < args - 1; x++) {
-		/*(next = va_arg(*ap, char*)) != NULL*/
-		next = va_arg(*ap, char *);
-		if (next == NULL) {
-			break;
-		}
+	while ((next = va_arg(*ap, char *)) != NULL) {
 
 		if (!ends_with_delim && !ufa_str_startswith(next, delim)) {
 			char *temp = ufa_util_strcat(buf, delim);
@@ -69,17 +70,15 @@ static char *_join_path(const char *delim, const char *first_element, int args,
 	return buf;
 }
 
-char *ufa_util_joinpath(int args, const char *first_element, ...)
+char *ufa_util_joinpath(const char *first_element, ...)
 {
 	va_list ap;
 	va_start(ap, first_element);
-	/* TODO use the default file separator */
-	char *str = _join_path(UFA_FILE_SEPARATOR, first_element, args, &ap);
+	char *str = _join_path(UFA_FILE_SEPARATOR, first_element, &ap);
 	va_end(ap);
 
 	return str;
 }
-
 /**
  * Returns the file name of a file path.
  * It returns a newly allocated string with the last part of the path
@@ -93,16 +92,6 @@ char *ufa_util_getfilename(const char *filepath)
 	char *last_part = ufa_strdup((char *)last->data);
 	ufa_list_free_full(split, free);
 	return last_part;
-}
-
-char *ufa_util_joinstr(char *delim, int args, const char *first_element, ...)
-{
-	va_list ap;
-	va_start(ap, first_element);
-	char *str = _join_path(delim, first_element, args, &ap);
-	va_end(ap);
-
-	return str;
 }
 
 struct ufa_list *ufa_str_split(const char *str, const char *delim)
@@ -153,6 +142,48 @@ char *ufa_util_get_current_dir()
 		perror("getcwd() error");
 		return NULL;
 	}
+}
+
+char *ufa_util_get_home_dir()
+{
+	struct passwd pwd;
+	struct passwd *result;
+	size_t bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+	char *buf = malloc(bufsize);
+
+	if ((getpwuid_r(getuid(), &pwd, buf, bufsize, &result)) != 0) {
+		perror("getpwuid_r() error.");
+		return NULL;
+	}
+
+	char *ret = ufa_strdup(pwd.pw_dir);
+	free(buf);
+	return ret;
+}
+
+char *ufa_util_config_dir(const char *appname)
+{
+	char *config_dir = NULL;
+	const char *s = getenv("XDG_CONFIG_HOME");
+	if (s == NULL) {
+		char *homedir = ufa_util_get_home_dir();
+		config_dir = ufa_util_joinpath(homedir, ".config", appname, NULL);
+		free(homedir);
+	} else {
+		config_dir = ufa_util_joinpath(s, appname, NULL);
+	}
+	return config_dir;
+}
+
+bool ufa_util_mkdir(char *dir, struct ufa_error **error)
+{
+	mode_t mode = 0777;
+	if (mkdir(dir, mode) == 0) {
+		return true;
+	}
+
+	ufa_error_new(error, errno, strerror(errno));
+	return false;
 }
 
 int ufa_util_strequals(const char *str1, const char *str2)
@@ -220,4 +251,42 @@ void ufa_str_replace(char *str, char old, char new)
 		*p = new;
 		p++;
 	}
+}
+
+static int istrimchar(char c)
+{
+	return (isblank(c) || c == '\r' || c == '\n');
+}
+
+char *ufa_str_ltrim(char *s)
+{
+	char *tmp = s;
+	while (istrimchar(*tmp)) {
+		tmp++;
+	}
+	memmove(s, tmp, strlen(tmp)+1);
+
+	return s;
+}
+
+char *ufa_str_rtrim(char *s)
+{
+	int last = strlen(s);
+	char *tmp = s + last - 1;
+	while (tmp >= s) {
+		if (istrimchar(*tmp)) {
+			*tmp = '\0';
+		} else {
+			break;
+		}
+		tmp--;
+	}
+	return s;
+}
+
+char *ufa_str_trim(char *s)
+{
+	s = ufa_str_rtrim(s);
+	s = ufa_str_ltrim(s);
+	return s;
 }
