@@ -172,7 +172,7 @@ char *ufa_util_config_dir(const char *appname)
 	return config_dir;
 }
 
-bool ufa_util_mkdir(char *dir, struct ufa_error **error)
+bool ufa_util_mkdir(const char *dir, struct ufa_error **error)
 {
 	mode_t mode = 0777;
 	if (mkdir(dir, mode) == 0) {
@@ -286,4 +286,13 @@ char *ufa_str_trim(char *s)
 	s = ufa_str_rtrim(s);
 	s = ufa_str_ltrim(s);
 	return s;
+}
+
+int ufa_str_hash(const char *str)
+{
+	int h = 0;
+	while (*str++ != '\0') {
+		h = h*31 + *str;
+	}
+	return h;
 }

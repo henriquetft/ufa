@@ -39,7 +39,7 @@ char *ufa_util_get_home_dir();
 
 char *ufa_util_config_dir(const char *appname);
 
-bool ufa_util_mkdir(char *dir, struct ufa_error **error);
+bool ufa_util_mkdir(const char *dir, struct ufa_error **error);
 
 struct ufa_list *ufa_str_split(const char *str, const char *delim);
 
@@ -64,5 +64,7 @@ char *ufa_str_ltrim(char *s);
 char *ufa_str_rtrim(char *s);
 
 char *ufa_str_trim(char *s);
+
+int ufa_str_hash(const char *str);
 
 #endif /* MISC_H_ */
