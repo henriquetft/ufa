@@ -166,7 +166,7 @@ static void process_ufa_event(struct ufa_event *uevent)
 	if (func != NULL) {
 		ufa_debug("Invoking callback for %d: %p\n", watcher, func);
 		func(uevent);
-		ufa_debug("Callback returned");
+		ufa_debug("Callback exited");
 	}
 
 	free_ufa_event(uevent);
