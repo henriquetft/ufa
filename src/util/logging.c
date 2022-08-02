@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 static int loglevel = UFA_LOG_DEBUG;
 
@@ -147,4 +148,9 @@ void ufa_fatal(char *format, ...)
 		_ufa_log(UFA_LOG_FATAL, format, ap);
 		va_end(ap);
 	}
+}
+
+bool ufa_is_logging(enum ufa_log_level level)
+{
+	return loglevel <= level;
 }

@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 enum ufa_log_level {
 	UFA_LOG_DEBUG = 0,
@@ -29,5 +30,7 @@ enum ufa_log_level ufa_log_level_from_str(char *level);
 void ufa_log_setlevel(enum ufa_log_level level);
 
 enum ufa_log_level ufa_log_getlevel();
+
+bool ufa_is_logging(enum ufa_log_level level);
 
 #endif /* LOGGING_H_ */
