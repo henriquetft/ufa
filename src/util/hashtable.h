@@ -2,6 +2,8 @@
 #ifndef HASHTABLE_H_
 #define HASHTABLE_H_
 
+#include <stdbool.h>
+
 #define UFA_HASH_DEFAULT_ARRAY_SIZE 10
 #define UFA_HASH_DEFAULT_LOAD_FACTOR 0.7f
 
@@ -25,12 +27,12 @@ ufa_hashtable_t *ufa_hashtable_new(ufa_hash_func_t hashfunc,
 				   ufa_hash_free_func_t freekey,
 				   ufa_hash_free_func_t freevalue);
 
-void ufa_hashtable_put(ufa_hashtable_t *table, void *key, void *value);
+bool ufa_hashtable_put(ufa_hashtable_t *table, void *key, void *value);
 
 void *ufa_hashtable_get(ufa_hashtable_t *table, const void *key);
 
 int ufa_hashtable_has_key(ufa_hashtable_t *table, const void *key);
-int ufa_hashtable_remove(ufa_hashtable_t *table, const void *key);
+bool ufa_hashtable_remove(ufa_hashtable_t *table, const void *key);
 
 int ufa_hashtable_size(ufa_hashtable_t *table);
 

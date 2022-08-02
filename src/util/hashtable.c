@@ -12,6 +12,7 @@
 #include "logging.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 /* Mapping function that unsets MSB (to prevent negatives) */
 #define MAP(hashcode, size) ((hashcode & 0x7FFFFFFF) % size)
@@ -99,10 +100,11 @@ ufa_hashtable_t *ufa_hashtable_new(ufa_hash_func_t hfunc,
 				      UFA_HASH_DEFAULT_LOAD_FACTOR);
 }
 
-void ufa_hashtable_put(ufa_hashtable_t *table, void *key, void *value)
+bool ufa_hashtable_put(ufa_hashtable_t *table, void *key, void *value)
 {
 	struct node *node = NULL;
 	int map = -1;
+	bool ret;
 	/* check whether a key exists */
 	find_node(table, key, &node, NULL, &map);
 
@@ -110,7 +112,13 @@ void ufa_hashtable_put(ufa_hashtable_t *table, void *key, void *value)
 		if (table->freevalues) {
 			table->freevalues(node->value);
 		}
+
+		if (table->freekeys) {
+			table->freekeys(node->key);
+		}
+		node->key = key;
 		node->value = value;
+		ret = false;
 	} else {
 		/* adding */
 		assert(map >= 0 && map < table->bucket_size);
@@ -126,7 +134,9 @@ void ufa_hashtable_put(ufa_hashtable_t *table, void *key, void *value)
 			ufa_debug(__FILE__ ": threshold reached. Rehashing...");
 			ufa_hashtable_rehash(table);
 		}
+		ret = true;
 	}
+	return ret;
 }
 
 void *ufa_hashtable_get(ufa_hashtable_t *table, const void *key)
@@ -147,7 +157,7 @@ int ufa_hashtable_has_key(ufa_hashtable_t *table, const void *key)
 	return (node != NULL);
 }
 
-int ufa_hashtable_remove(ufa_hashtable_t *table, const void *key)
+bool ufa_hashtable_remove(ufa_hashtable_t *table, const void *key)
 {
 	struct node *to_del = NULL;
 	struct node *prev = NULL;
@@ -155,7 +165,7 @@ int ufa_hashtable_remove(ufa_hashtable_t *table, const void *key)
 
 	find_node(table, key, &to_del, &prev, &map);
 
-	int found = (to_del != NULL);
+	bool found = (to_del != NULL);
 
 	if (found) {
 		if (prev == NULL) {
