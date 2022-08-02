@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <assert.h>
 
 
 /* ========================================================================== */
@@ -30,9 +31,16 @@
 
 
 static int inotify                      = -1;
+
+/** Maps filename -> WD */
+static ufa_hashtable_t *table_filename  = NULL;
+/** Maps WD -> filename */
 static ufa_hashtable_t *table           = NULL;
+/** Maps WD -> ufa_monitor_callback_t */
 static ufa_hashtable_t *callbacks       = NULL;
+/** Event cookie (uint32_t) -> inotify_event* */
 static ufa_hashtable_t *buffered_events = NULL;
+/** Event loop thread */
 static pthread_t events_loop_thread;
 
 
@@ -115,17 +123,18 @@ static int to_inotify_mask(enum ufa_monitor_event events)
 	return mask;
 }
 
-
 static void mask_to_str(unsigned int mask, char *str)
 {
 	strcpy(str, "");
-	int masks[] = { IN_ACCESS, IN_ATTRIB, IN_CLOSE_WRITE, IN_CLOSE_NOWRITE,
-		       IN_CREATE, IN_DELETE, IN_DELETE_SELF, IN_MODIFY,
-		       IN_MOVE_SELF, IN_MOVED_FROM, IN_MOVED_TO, IN_OPEN };
+	int masks[] = {IN_ACCESS,	 IN_ATTRIB,   IN_CLOSE_WRITE,
+		       IN_CLOSE_NOWRITE, IN_CREATE,   IN_DELETE,
+		       IN_DELETE_SELF,	 IN_MODIFY,   IN_MOVE_SELF,
+		       IN_MOVED_FROM,	 IN_MOVED_TO, IN_OPEN};
 
-	char* strs[] = { "IN_ACCESS", "IN_ATTRIB", "IN_CLOSE_WRITE", "IN_CLOSE_NOWRITE",
-			"IN_CREATE", "IN_DELETE", "IN_DELETE_SELF", "IN_MODIFY",
-			"IN_MOVE_SELF", "IN_MOVED_FROM", "IN_MOVED_TO", "IN_OPEN" };
+	char *strs[] = {"IN_ACCESS",	    "IN_ATTRIB",   "IN_CLOSE_WRITE",
+			"IN_CLOSE_NOWRITE", "IN_CREATE",   "IN_DELETE",
+			"IN_DELETE_SELF",   "IN_MODIFY",   "IN_MOVE_SELF",
+			"IN_MOVED_FROM",    "IN_MOVED_TO", "IN_OPEN"};
 	int len = 12;
 
 	int x;
@@ -215,7 +224,8 @@ static void handle_inotify_moved(const struct inotify_event *event_from,
 
 		char *dir_from = ufa_hashtable_get(table, &(event_from->wd));
 		char *dir_to = ufa_hashtable_get(table, &(event_to->wd));
-		char *path_from = ufa_util_joinpath(dir_from, event_from->name, NULL);
+		char *path_from = ufa_util_joinpath(dir_from, event_from->name,
+						    NULL);
 		char *path_to = ufa_util_joinpath(dir_to, event_to->name, NULL);
 		ufa_debug("..Path from: %s", path_from);
 		ufa_debug("..Path to: %s", path_to);
@@ -340,7 +350,10 @@ bool ufa_monitor_init()
 	table           = ufa_hashtable_new(int_hash, int_equals, free, free);
 	buffered_events = ufa_hashtable_new(uint32_hash, uint32_equals, free,
 					    free);
-	callbacks       = ufa_hashtable_new(int_hash, int_equals, free, free);
+	callbacks       = ufa_hashtable_new(int_hash, int_equals, free, NULL);
+
+	table_filename  = ufa_hashtable_new(ufa_str_hash, ufa_util_strequals,
+					   free, free);
 
 	inotify = fd;
 
@@ -358,7 +371,15 @@ bool ufa_monitor_init()
 int ufa_monitor_add_watcher(const char *filename, enum ufa_monitor_event events,
 			    ufa_monitor_callback_t callback)
 {
-	int wd, mask;
+	int wd = -1;
+	int mask;
+	int *p = ufa_hashtable_get(table_filename, filename);
+	if (p) {
+		ufa_debug("%s already watched", filename);
+		wd = *p;
+		goto end;
+	}
+
 	mask = to_inotify_mask(events);
 	wd = inotify_add_watch(inotify, filename, mask);
 	if (wd < 0) {
@@ -368,26 +389,35 @@ int ufa_monitor_add_watcher(const char *filename, enum ufa_monitor_event events,
 	ufa_debug("Watching %d -- %s", wd, filename);
 	ufa_hashtable_put(table, int_dup(wd), ufa_strdup(filename));
 	ufa_hashtable_put(callbacks, int_dup(wd), callback);
-
+	ufa_hashtable_put(table_filename, ufa_strdup(filename), int_dup(wd));
+end:
 	return wd;
 
 error_inotify:
 	perror("inotify_add_watch");
-	return -1;
+	return wd;
 }
 
-int ufa_monitor_remove_watcher(int watcher)
+bool ufa_monitor_remove_watcher(int watcher)
 {
-	int is_ok = !inotify_rm_watch(inotify, watcher);
+	ufa_debug("Removing watcher %d", watcher);
+	bool is_ok = !inotify_rm_watch(inotify, watcher);
 
 	if (!is_ok) {
 		perror("inotify_rm_watch");
+		goto end;
 	}
 
+	ufa_debug("Removed watcher %d", watcher);
+
+	char *filename = ufa_hashtable_get(table, &watcher);
+	assert(filename != NULL);
+	ufa_hashtable_remove(table_filename, filename);
 	ufa_hashtable_remove(table, &watcher);
 	ufa_hashtable_remove(buffered_events, &watcher);
 	ufa_hashtable_remove(callbacks, &watcher);
 
+end:
 	return is_ok;
 }
 

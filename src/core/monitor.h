@@ -27,7 +27,7 @@ bool ufa_monitor_init();
 int ufa_monitor_add_watcher(const char *filename, enum ufa_monitor_event events,
 			    ufa_monitor_callback_t callback);
 
-int ufa_monitor_remove_watcher(int watcher);
+bool ufa_monitor_remove_watcher(int watcher);
 
 
 void ufa_event_tostr(enum ufa_monitor_event event, char *buf, size_t n);
