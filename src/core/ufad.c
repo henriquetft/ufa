@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define CONFIG_DIR_NAME "ufa"
-#define DIRS_FILE_NAME "dirs"
-#define DIRS_FILE_DEFAULT_STRING "# UFA repository folders\n\n"
+#define    CONFIG_DIR_NAME             "ufa"
+#define    DIRS_FILE_NAME              "dirs"
+#define    DIRS_FILE_DEFAULT_STRING    "# UFA repository folders\n\n"
 
 /** Hash table mapping DIR -> WD */
 static ufa_hashtable_t *table_current_dirs = NULL;
@@ -164,6 +164,8 @@ static void reload_config()
 		}
 	}
 
+	log_current_watched_dirs();
+
 	// discarding temporary state
 	ufa_list_free_full(list_add, free);
 	ufa_list_free_full(list_remove, free);
@@ -173,8 +175,6 @@ static void reload_config()
 	// discard old list and set and points it to the new one
 	ufa_hashtable_free(table_current_dirs);
 	table_current_dirs = table_new_dirs;
-
-	log_current_watched_dirs();
 }
 
 static int check_and_create_config_dir()
@@ -229,6 +229,12 @@ end:
 	return ret;
 }
 
+/**
+ * Reads config file (DIRS_FILE_NAME) and gets all valid (existing)
+ * directories listed.
+ *
+ * @return List of dirs in DIRS_FILE_NAME
+ */
 static struct ufa_list *get_valid_dirs()
 {
 	const size_t MAX_LINE = 1024;
@@ -258,8 +264,11 @@ static struct ufa_list *get_valid_dirs()
 	return list;
 }
 
+
+
 int main(int argc, char *argv[])
 {
+
 	// FIXME daemonize process
 	table_current_dirs = ufa_hashtable_new(ufa_str_hash,
 					       ufa_util_strequals,
@@ -300,9 +309,8 @@ int main(int argc, char *argv[])
 	ufa_list_free_full(list_dirs_config, free);
 
 	log_current_watched_dirs();
-	printf("Waiting...\n");
-	while (1)
-		;
+
+	ufa_monitor_wait();
 
 	printf("Terminating %s\n", argv[0]);
 	return 0;
