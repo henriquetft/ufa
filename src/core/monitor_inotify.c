@@ -19,18 +19,20 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <assert.h>
+#include <sys/eventfd.h>
 
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
-#define   EVENT_SIZE     (sizeof (struct inotify_event))
-
-#define   BUF_LEN        (1024 * (EVENT_SIZE + 16))
+#define   EVENT_SIZE       (sizeof (struct inotify_event))
+#define   BUF_LEN          (1024 * (EVENT_SIZE + 16))
+#define   VALID_FD(fd)     (fd >= 0)
 
 
 static int inotify                      = -1;
+static int efd                          = -1;
 
 /** Maps filename -> WD */
 static ufa_hashtable_t *table_filename  = NULL;
@@ -47,6 +49,41 @@ static pthread_t events_loop_thread;
 /* ========================================================================== */
 /* AUXILIARY FUNCTIONS                                                        */
 /* ========================================================================== */
+
+static void close_and_free_state()
+{
+	ufa_debug("Closing inotify and eventfd file descriptor");
+	if (VALID_FD(inotify)) {
+		close(inotify);
+		inotify = -1;
+	}
+	if (VALID_FD(efd)) {
+		close(efd);
+		efd = -1;
+	}
+
+	ufa_debug("Destroying hashtable state");
+	ufa_hashtable_free(table_filename);
+	table_filename = NULL;
+	ufa_hashtable_free(table);
+	table = NULL;
+	ufa_hashtable_free(callbacks);
+	callbacks = NULL;
+	ufa_hashtable_free(buffered_events);
+	buffered_events = NULL;
+}
+
+static bool is_started()
+{
+	if (!VALID_FD(efd)) {
+		ufa_debug("Monitor not initialized/started");
+		return false;
+	}
+
+	assert(VALID_FD(inotify));
+	assert(buffered_events != NULL);
+	return true;
+}
 
 
 static int *int_dup(int i)
@@ -146,8 +183,9 @@ static void mask_to_str(unsigned int mask, char *str)
 	}
 }
 
-static void print_event(char *str, const struct inotify_event *event)
+static void print_event(const struct inotify_event *event)
 {
+	char str[500] = "";
 	mask_to_str(event->mask, str);
 	printf("\n------------------------------------\n");
 	printf ("wd=%d mask=%u cookie=%u len=%u\n mask_str=%s\n",
@@ -262,15 +300,15 @@ static void read_inotify_events()
 {
 	ufa_debug("Reading inotify events...");
 
-	char str[500] = "";
 	char buf[BUF_LEN];
 	int len, i = 0;
 
 	len = read(inotify, buf, BUF_LEN);
 	if (len < 0) {
 		perror("read inotify");
-	} else if (!len) {
-		/* BUF_LEN too small? */
+	} else if (len == 0) {
+		ufa_warn("inotify end of file");
+		return;
 	}
 
 	while (i < len) {
@@ -279,7 +317,7 @@ static void read_inotify_events()
 		event = (struct inotify_event *) &buf[i];
 		int total_size = EVENT_SIZE + event->len;
 
-		print_event(str, event);
+		print_event(event);
 
 		if ((event->mask & IN_MOVE) && event->cookie) {
 			struct inotify_event *prev =
@@ -308,28 +346,61 @@ static void read_inotify_events()
 
 static void loop_read_events()
 {
+	bool reading = true;
 	ufa_debug("Starting event loop ...");
-	while (1) {
-		read_inotify_events();
-		struct ufa_list *values = ufa_hashtable_values(buffered_events);
-		if (values == NULL) {
-			continue;
+
+	fd_set rfds;
+	int retval;
+	int maxfd = (inotify > efd ? inotify : efd) + 1;
+
+	while (reading) {
+		FD_ZERO(&rfds);
+		FD_SET(inotify, &rfds);
+		FD_SET(efd, &rfds);
+
+		ufa_debug("Waiting fds ready for reading...");
+		retval = select(maxfd, &rfds, NULL, NULL, NULL);
+		if (retval < 0) {
+			perror("select");
+			exit(EXIT_FAILURE);
+		} else if (retval == 0) {
+			// 0 is timeout, but it is not being used
+			assert(false);
 		}
 
-		ufa_debug("Handling unpaired events ...");
-		for (UFA_LIST_EACH(i, values)) {
-			struct inotify_event *element = i->data;
-			ufa_debug(".Unpaired event: %p\n", element);
-			if (element->mask & IN_MOVED_FROM) {
-				handle_inotify_moved(element, NULL);
-			} else if (element->mask & IN_MOVED_TO) {
-				handle_inotify_moved(NULL, element);
+		// reading from eventfd
+		if (FD_ISSET(efd, &rfds)) {
+			ufa_debug("eventfd ready to read. Stopping loop\n");
+			reading = false;
+		}
+
+		// reading from inotify fd
+		if (FD_ISSET(inotify, &rfds)) {
+			read_inotify_events();
+			struct ufa_list *values =
+			    ufa_hashtable_values(buffered_events);
+			if (values == NULL) {
+				continue;
 			}
-		}
 
-		ufa_list_free(values);
-		ufa_hashtable_clear(buffered_events);
+			ufa_debug("Handling unpaired events ...");
+			for (UFA_LIST_EACH(i, values)) {
+				struct inotify_event *element = i->data;
+				ufa_debug(".Unpaired event: %p\n", element);
+				if (element->mask & IN_MOVED_FROM) {
+					handle_inotify_moved(element, NULL);
+				} else if (element->mask & IN_MOVED_TO) {
+					handle_inotify_moved(NULL, element);
+				}
+			}
+
+			ufa_list_free(values);
+			ufa_hashtable_clear(buffered_events);
+		}
 	}
+
+	close_and_free_state();
+	printf("Exiting loop_read_events\n");
 }
 
 
@@ -339,11 +410,24 @@ static void loop_read_events()
 
 bool ufa_monitor_init()
 {
+	if (is_started()) {
+		ufa_debug("already started");
+		return false;
+	}
 	int fd = inotify_init();
 	if (fd < 0) {
 		fprintf(stderr, "Failed to initialize inotify. Are you running "
 				"a inotify-enabled kernel?\n");
 		perror("inotify_init");
+		return false;
+	}
+
+	inotify = fd;
+
+	// creating eventfd to recieve termination request
+	efd = eventfd(0, 0);
+	if (efd == -1) {
+		perror("eventfd");
 		return false;
 	}
 
@@ -354,9 +438,6 @@ bool ufa_monitor_init()
 
 	table_filename  = ufa_hashtable_new(ufa_str_hash, ufa_util_strequals,
 					   free, free);
-
-	inotify = fd;
-
 	// start thread
 	int ret = pthread_create(&events_loop_thread,
 				 NULL,
@@ -364,13 +445,49 @@ bool ufa_monitor_init()
 				 NULL);
 	if (ret < 0) {
 		perror("pthread_create");
+		close_and_free_state();
 	}
 	return !ret;
+}
+
+
+bool ufa_monitor_stop()
+{
+	ufa_return_val_ifnot(is_started(), false);
+
+	ufa_debug("Writing to eventfd to stop loop");
+	uint64_t u = 1;
+	ssize_t s;
+	s = write(efd, &u, sizeof(uint64_t));
+	if (s != sizeof(uint64_t)) {
+		perror("write");
+	}
+
+	ufa_debug("Waiting for event loop thread to terminate");
+	pthread_join(events_loop_thread, NULL);
+
+	assert(!VALID_FD(efd));
+	assert(!VALID_FD(inotify));
+	assert(table == NULL);
+
+	return true;
+}
+
+bool ufa_monitor_wait()
+{
+	ufa_return_val_ifnot(is_started(), false);
+
+	ufa_debug("Waiting for event loop thread to terminate");
+	pthread_join(events_loop_thread, NULL);
+
+	return true;
 }
 
 int ufa_monitor_add_watcher(const char *filename, enum ufa_monitor_event events,
 			    ufa_monitor_callback_t callback)
 {
+	ufa_return_val_ifnot(is_started(), -1);
+
 	int wd = -1;
 	int mask;
 	int *p = ufa_hashtable_get(table_filename, filename);
@@ -400,6 +517,8 @@ error_inotify:
 
 bool ufa_monitor_remove_watcher(int watcher)
 {
+	ufa_return_val_ifnot(is_started(), false);
+
 	ufa_debug("Removing watcher %d", watcher);
 	bool is_ok = !inotify_rm_watch(inotify, watcher);
 

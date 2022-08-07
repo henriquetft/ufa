@@ -24,6 +24,10 @@ struct ufa_event
 
 bool ufa_monitor_init();
 
+bool ufa_monitor_stop();
+
+bool ufa_monitor_wait();
+
 int ufa_monitor_add_watcher(const char *filename, enum ufa_monitor_event events,
 			    ufa_monitor_callback_t callback);
 
