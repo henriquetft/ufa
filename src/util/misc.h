@@ -12,6 +12,8 @@
 /** Size of an array */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+#define ufa_return_val_ifnot(expr, val) if (!(expr)) { return val; }
+
 /** Macro to use with FOR statement to iterate over arrays
  * e.g. for (UFA_ARRAY_EACH(i, array)) { ... }*/
 #define UFA_ARRAY_EACH(i, arr) size_t i = 0; i < ARRAY_SIZE(arr); i++
