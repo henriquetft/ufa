@@ -283,7 +283,9 @@ struct ufa_list *ufa_hashtable_values(ufa_hashtable_t *table)
 
 void ufa_hashtable_free(ufa_hashtable_t *table)
 {
-	ufa_hashtable_clear(table);
-	free(table->buckets);
-	free(table);
+	if (table != NULL) {
+		ufa_hashtable_clear(table);
+		free(table->buckets);
+		free(table);
+	}
 }
