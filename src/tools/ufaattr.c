@@ -6,8 +6,8 @@
  *
  * For the terms of usage and distribution, please see COPYING file.
  */
-
 #include "core/repo.h"
+#include "core/data.h"
 #include "util/list.h"
 #include "util/logging.h"
 #include "util/misc.h"
@@ -89,7 +89,6 @@ static void print_usage(FILE *stream)
 		"\nOPTIONS\n"
 		"  -h\t\tPrint this help and quit\n"
 		"  -v\t\tPrint version information and quit\n"
-		"  -r DIR\tRepository dir. Default is current dir\n"
 		"  -l LOG_LEVEL\tLog levels: debug, info, warn, error, fatal\n"
 		"\n"
 		"COMMANDS\n"
@@ -146,7 +145,7 @@ static int handle_set()
 	char *value = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_setattr(file, attr, value, &error);
+	bool is_ok = ufa_data_setattr(file, attr, value, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -162,7 +161,7 @@ static int handle_unset()
 	char *attr = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_unsetattr(file, attr, &error);
+	bool is_ok = ufa_data_unsetattr(file, attr, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -180,7 +179,7 @@ static int handle_get()
 	bool found = false;
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_repo_getattr(file, &error);
+	struct ufa_list *list_attrs = ufa_data_getattr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
@@ -203,7 +202,7 @@ static int handle_list()
 	char *file = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_repo_getattr(file, &error);
+	struct ufa_list *list_attrs = ufa_data_getattr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		printf("%s\n", ((struct ufa_repo_attr *)i->data)->attribute);
@@ -222,7 +221,7 @@ static int handle_describe()
 	char *file = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_repo_getattr(file, &error);
+	struct ufa_list *list_attrs = ufa_data_getattr(file, &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
@@ -271,22 +270,13 @@ int main(int argc, char *argv[])
 	global_argv = argv;
 
 	int opt;
-	char *repository = NULL;
 
 	bool error_usage = false;
 	int exit_status = EX_OK;
 	int r = 0, log = 0;
 
-	while ((opt = getopt(argc, argv, ":r:l:hv")) != -1 && !error_usage) {
+	while ((opt = getopt(argc, argv, ":l:hv")) != -1 && !error_usage) {
 		switch (opt) {
-		case 'r':
-			if (r) {
-				error_usage = true;
-			} else {
-				r = 1;
-				repository = ufa_strdup(optarg);
-			}
-			break;
 		case 'v':
 			printf("%s\n", program_version);
 			exit_status = EX_OK;
@@ -333,23 +323,8 @@ int main(int argc, char *argv[])
 
 	char *command = NEXT_ARG;
 
-	if (repository == NULL) {
-		// repository = ufa_util_get_current_dir();
-		// ufa_debug("Using CWD as repository: %s", repository);
-		fprintf(stderr, "error: you must specify a repository path\n");
-		exit_status = EXIT_FAILURE;
-		goto end;
-	}
-
-	struct ufa_error *err = NULL;
-	if (!ufa_repo_init(repository, &err)) {
-		ufa_error_print_and_free(err);
-		exit_status = 1;
-		goto end;
-	}
 	exit_status = handle_command(command);
-
 end:
-	free(repository);
+	ufa_data_close();
 	return exit_status;
 }

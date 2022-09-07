@@ -78,8 +78,10 @@ static struct options {
 		t, offsetof(struct options, p), 1                              \
 	}
 
-/* File attributes about repository path */
+/** File attributes about repository path */
 static struct stat stat_repository;
+
+static ufa_repo_t *repo;
 
 /** Command-line options */
 static const struct fuse_opt option_spec[] = {
@@ -146,14 +148,14 @@ static int ufa_fuse_getattr(const char *path,
 		_copy_stat(stbuf, &stat_repository);
 
 		/* A FILE */
-	} else if ((filepath = ufa_repo_get_realfilepath(path, NULL)) != NULL) {
+	} else if ((filepath = ufa_repo_get_realfilepath(repo, path, NULL)) != NULL) {
 		ufa_debug(".copying stat from: '%s'", filepath);
 		struct stat st;
 		stat(filepath, &st);
 		_copy_stat(stbuf, &st);
 
 		/* ANOTHER TAG */
-	} else if (ufa_repo_isatag(path, NULL)) {
+	} else if (ufa_repo_isatag(repo, path, NULL)) {
 		_copy_stat(stbuf, &stat_repository);
 	} else {
 		res = -ENOENT;
@@ -177,7 +179,7 @@ static int ufa_fuse_readdir(const char *path,
 	filler(buf, "..", NULL, 0, 0);
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list = ufa_repo_listfiles(path, &error);
+	struct ufa_list *list = ufa_repo_listfiles(repo, path, &error);
 	ufa_error_abort(error);
 
 	for (UFA_LIST_EACH(iter, list)) {
@@ -202,7 +204,7 @@ static int ufa_fuse_open(const char *path,
 			 struct fuse_file_info *fi)
 {
 	ufa_debug("open: '%s' ---> '%s'\n", path,
-		  ufa_repo_get_realfilepath(path, NULL));
+		  ufa_repo_get_realfilepath(repo, path, NULL));
 
 	if ((fi->flags & O_ACCMODE) != O_RDONLY) {
 		return -EACCES;
@@ -219,7 +221,7 @@ static int ufa_fuse_read(const char *path,
 			 struct fuse_file_info *fi)
 {
 	/* e.g.: /tag1/real_file.txt */
-	char *filepath = ufa_repo_get_realfilepath(path, NULL);
+	char *filepath = ufa_repo_get_realfilepath(repo, path, NULL);
 	ufa_debug("read: %s ---> %s (%ld / %lu)", path, filepath, offset, size);
 
 	int res = 0;
@@ -248,7 +250,7 @@ int ufa_fuse_mkdir(const char *path, mode_t mode)
 	if (ufa_str_startswith(path, "/") && ufa_str_count(path, "/") == 1) {
 		char *last_part = ufa_util_getfilename(path);
 		struct ufa_error *error = NULL;
-		int r = ufa_repo_inserttag(last_part, &error);
+		int r = ufa_repo_inserttag(repo, last_part, &error);
 		free(last_part);
 		ufa_error_abort(error);
 		if (r == 0) {
@@ -304,14 +306,14 @@ int main(int argc, char *argv[])
 		ufa_log_setlevel(level);
 	}
 
-	bool init = ufa_repo_init(options.repository, NULL);
-	if (!init && !options.show_help) {
-		fprintf(stderr,
-			"Repository '%s' is not a dir or doesn't exist\n",
+	struct ufa_error *error = NULL;
+	repo = ufa_repo_init(options.repository, &error);
+	ufa_error_print_and_free(error);
+	if (repo == NULL && !options.show_help) {
+		fprintf(stderr, "Could not init '%s' repo\n",
 			options.repository);
 		return -1;
 	}
-
 	stat(options.repository, &stat_repository);
 
 fuse:

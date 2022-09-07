@@ -8,6 +8,7 @@
  */
 
 #include "core/repo.h"
+#include "core/data.h"
 #include "util/list.h"
 #include "util/logging.h"
 #include "util/misc.h"
@@ -60,6 +61,8 @@ static int handle_help_option(char *command);
 
 #define EXIT_COMMAND_NOT_FOUND 127
 
+static char *repository = NULL;
+
 static int global_args = -1;
 static char **global_argv = NULL;
 
@@ -82,6 +85,25 @@ static handle_command_f handle_commands[] = {
     handle_clear, handle_list_all, handle_create,
 };
 
+static int validate_repository()
+{
+	if (repository == NULL) {
+		repository = ufa_util_get_current_dir();
+		ufa_debug("Using CWD as repository: %s", repository);
+	}
+
+	int ret;
+	if (!ufa_repo_isrepo(repository)) {
+		fprintf(stderr, "error: %s is not a repository path\n",
+			repository);
+		ret = EXIT_FAILURE;
+	} else {
+		ret = EX_OK;
+	}
+
+	return ret;
+}
+
 /* ========================================================================== */
 /* IMPLEMENTATION                                                             */
 /* ========================================================================== */
@@ -95,6 +117,7 @@ static void print_usage(FILE *stream)
 		"  -h\t\tPrint this help and quit\n"
 		"  -v\t\tPrint version information and quit\n"
 		"  -r DIR\tRepository dir. Default is current dir\n"
+		"  -l LOG_LEVEL\tLog levels: debug, info, warn, error, fatal\n"
 		"\n"
 		"COMMANDS\n"
 		"  set\t\tSet tags on file\n"
@@ -157,7 +180,7 @@ static int handle_set()
 	char *new_tag = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_settag(file, new_tag, &error);
+	bool is_ok = ufa_data_settag(file, new_tag, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -173,8 +196,9 @@ static int handle_unset()
 	char *file = NEXT_ARG;
 	char *tag = NEXT_ARG;
 
+
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_unsettag(file, tag, &error);
+	bool is_ok = ufa_data_unsettag(file, tag, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -192,14 +216,14 @@ static int handle_list()
 	/* FIXME must fail if file does not exist */
 	struct ufa_list *list = NULL;
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_gettags(arg, &list, &error);
+	bool is_ok = ufa_data_gettags(arg, &list, &error);
 	int ret;
 
 	if (is_ok) {
 		for (UFA_LIST_EACH(iter, list)) {
-			printf("%s\n", (char *)iter->data);
+			printf("%s\n", (char *) iter->data);
 		}
-		ufa_list_free_full(list, free);
+		ufa_list_free_full(list, ufa_free);
 		ret = EX_OK;
 	} else {
 		ret = EXIT_FAILURE;
@@ -222,7 +246,7 @@ static int handle_clear()
 	char *file = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_repo_cleartags(file, &error);
+	bool is_ok = ufa_data_cleartags(file, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -233,15 +257,18 @@ static int handle_clear()
  */
 static int handle_list_all()
 {
-	int ret;
+	int ret = validate_repository();
+	if (ret != EX_OK) {
+		return ret;
+	}
 	struct ufa_error *error = NULL;
-	struct ufa_list *list = ufa_listtags(&error);
+	struct ufa_list *list = ufa_data_listtags(repository, &error);
 	bool is_ok = (error == NULL);
 	if (is_ok) {
 		for (UFA_LIST_EACH(iter, list)) {
-			printf("%s\n", (char *)iter->data);
+			printf("%s\n", (char *) iter->data);
 		}
-		ufa_list_free_full(list, free);
+		ufa_list_free_full(list, ufa_free);
 		ret = EX_OK;
 	} else {
 		ret = EXIT_FAILURE;
@@ -260,10 +287,14 @@ static int handle_create()
 		return EX_USAGE;
 	}
 
-	char *tag = NEXT_ARG;
+	int ret = validate_repository();
+	if (ret != EX_OK) {
+		return ret;
+	}
 
+	char *tag = NEXT_ARG;
 	struct ufa_error *error = NULL;
-	bool is_ok = (ufa_repo_inserttag(tag, &error) > 0);
+	bool is_ok = (ufa_data_inserttag(repository, tag, &error) > 0);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -298,6 +329,8 @@ static int handle_help_option(char *command)
 	return exit_code;
 }
 
+
+
 int main(int argc, char *argv[])
 {
 	program_name = argv[0];
@@ -305,13 +338,12 @@ int main(int argc, char *argv[])
 	global_argv = argv;
 
 	int opt;
-	char *repository = NULL;
 
 	bool error_usage = false;
 	int exit_status = EX_OK;
 	int r = 0, log = 0;
 
-	while ((opt = getopt(argc, argv, ":r:hv")) != -1 && !error_usage) {
+	while ((opt = getopt(argc, argv, ":l:r:hv")) != -1 && !error_usage) {
 		switch (opt) {
 		case 'r':
 			if (r) {
@@ -368,23 +400,10 @@ int main(int argc, char *argv[])
 
 	char *command = NEXT_ARG;
 
-	if (repository == NULL) {
-		// repository = ufa_util_get_current_dir();
-		// ufa_debug("Using CWD as repository: %s", repository);
-		fprintf(stderr, "error: you must specify a repository path\n");
-		exit_status = EXIT_FAILURE;
-		goto end;
-	}
-
-	struct ufa_error *err = NULL;
-	if (!ufa_repo_init(repository, &err)) {
-		ufa_error_print_and_free(err);
-		exit_status = 1;
-		goto end;
-	}
 	exit_status = handle_command(command);
 
 end:
-	free(repository);
+	ufa_free(repository);
+	ufa_data_close();
 	return exit_status;
 }

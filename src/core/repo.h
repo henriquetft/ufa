@@ -33,33 +33,71 @@ struct ufa_repo_attr {
 	char *value;
 };
 
+typedef struct ufa_repo ufa_repo_t;
 
-bool ufa_repo_init(const char *repository, struct ufa_error **error);
 
-struct ufa_list *ufa_listtags(struct ufa_error **error);
+ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error);
 
-bool ufa_repo_isatag(const char *path, struct ufa_error **error);
+char *ufa_repo_getrepopath(ufa_repo_t *repo);
 
-struct ufa_list *ufa_repo_listfiles(const char *dirpath,
+
+struct ufa_list *ufa_repo_listtags(ufa_repo_t *repo, struct ufa_error **error);
+
+struct ufa_list *ufa_repo_listfiles(ufa_repo_t *repo,
+				    const char *dirpath,
 				    struct ufa_error **error);
 
-char *ufa_repo_get_realfilepath(const char *path, struct ufa_error **error);
-
-bool ufa_repo_gettags(const char *filename,
+bool ufa_repo_gettags(ufa_repo_t *repo,
+		      const char *filename,
 		      struct ufa_list **list,
 		      struct ufa_error **error);
 
-bool ufa_repo_settag(const char *filepath,
+bool ufa_repo_settag(ufa_repo_t *repo,
+		     const char *filepath,
 		     const char *tag,
 		     struct ufa_error **error);
 
-bool ufa_repo_cleartags(const char *filepath,
+bool ufa_repo_cleartags(ufa_repo_t *repo,
+			const char *filepath,
 			struct ufa_error **error);
 
-bool ufa_repo_unsettag(const char *filepath, const char *tag,
+bool ufa_repo_unsettag(ufa_repo_t *repo,
+		       const char *filepath,
+		       const char *tag,
 		       struct ufa_error **error);
 
-int ufa_repo_inserttag(const char *tag, struct ufa_error **error);
+int ufa_repo_inserttag(ufa_repo_t *repo,
+		       const char *tag,
+		       struct ufa_error **error);
+
+
+struct ufa_list *ufa_repo_search(ufa_repo_t *repo,
+				 struct ufa_list *filter_attr,
+				 struct ufa_list *tags,
+				 struct ufa_error **error);
+
+bool ufa_repo_setattr(ufa_repo_t *repo,
+		      const char *filepath,
+		      const char *attribute,
+		      const char *value,
+		      struct ufa_error **error);
+
+bool ufa_repo_unsetattr(ufa_repo_t *repo,
+			const char *filepath,
+			const char *attribute,
+			struct ufa_error **error);
+
+// returns list of ufa_repo_attr_t
+struct ufa_list *ufa_repo_getattr(ufa_repo_t *repo,
+				  const char *filepath,
+				  struct ufa_error **error);
+
+bool ufa_repo_isatag(ufa_repo_t *repo, const char *path,
+		     struct ufa_error **error);
+
+// FIXME
+char *ufa_repo_get_realfilepath(ufa_repo_t *repo, const char *path,
+				struct ufa_error **error);
 
 struct ufa_repo_filterattr *
 ufa_repo_filterattr_new(const char *attribute,
@@ -68,20 +106,12 @@ ufa_repo_filterattr_new(const char *attribute,
 
 void ufa_repo_filterattr_free(struct ufa_repo_filterattr *filter);
 
-struct ufa_list *ufa_repo_search(struct ufa_list *filter_attr,
-				 struct ufa_list *tags,
-				 struct ufa_error **error);
-
-bool ufa_repo_setattr(const char *filepath, const char *attribute,
-		      const char *value, struct ufa_error **error);
-
-bool ufa_repo_unsetattr(const char *filepath, const char *attribute,
-			struct ufa_error **error);
-
-// returns list of ufa_repo_attr_t
-struct ufa_list *ufa_repo_getattr(const char *filepath,
-				  struct ufa_error **error);
-
 void ufa_repo_attrfree(struct ufa_repo_attr *attr);
+
+char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error);
+
+void ufa_repo_free(ufa_repo_t *repo);
+
+bool ufa_repo_isrepo(char *directory);
 
 #endif /* UFA_REPO_H_ */

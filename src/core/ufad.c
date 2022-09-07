@@ -8,25 +8,24 @@
  */
 
 #include "core/monitor.h"
+#include "core/config.h"
 #include "util/hashtable.h"
 #include "util/logging.h"
 #include "util/misc.h"
 #include <stdio.h>
 #include <assert.h>
 
-#define    CONFIG_DIR_NAME             "ufa"
-#define    DIRS_FILE_NAME              "dirs"
-#define    DIRS_FILE_DEFAULT_STRING    "# UFA repository folders\n\n"
-
 /** Hash table mapping DIR -> WD */
 static ufa_hashtable_t *table_current_dirs = NULL;
 
+
 static const enum ufa_monitor_event CONFIG_DIR_MASK =
     UFA_MONITOR_MOVE | UFA_MONITOR_DELETE | UFA_MONITOR_CLOSEWRITE;
+
 static const enum ufa_monitor_event REPO_DIR_MASK =
     UFA_MONITOR_MOVE | UFA_MONITOR_DELETE | UFA_MONITOR_CLOSEWRITE;
 
-static struct ufa_list *get_valid_dirs();
+
 static void reload_config();
 
 static int *intptr_dup(int *i)
@@ -62,12 +61,38 @@ static void print_event(const struct ufa_event *event)
 	printf("WATCHER2...: %d\n", event->watcher2);
 }
 
+
+/**
+ * Handle events for file events on repo dir
+ *
+ * @param event
+ */
 void callback_event_repo(const struct ufa_event *event)
 {
 	// handle .goutputstream-* files
 	print_event(event);
+	if (event->event == UFA_MONITOR_MOVE) {
+		if (event->target1 && event->target2) {
+			// FIXME rename
+			printf("rename\n");
+		} else if (event->target1) {
+			printf("moving to ouside\n");
+			// FIXME remove
+		} else if (event->target2) {
+			printf("moving to inside\n");
+			// FIXME add
+		} else {
+			assert(false);
+		}
+	}
 }
 
+
+/**
+ * Handle a config change event (when config file modified)
+ *
+ * @param event
+ */
 void callback_event_config(const struct ufa_event *event)
 {
 	if (event->event == UFA_MONITOR_CLOSEWRITE &&
@@ -79,6 +104,7 @@ void callback_event_config(const struct ufa_event *event)
 static void log_current_watched_dirs()
 {
 	if (!table_current_dirs) {
+		ufa_debug("Current dirs not initialized");
 		return;
 	}
 	ufa_info("Currently watching %d dirs",
@@ -98,7 +124,7 @@ static void reload_config()
 {
 	ufa_debug("Changing config file");
 
-	struct ufa_list *list_dirs_config = get_valid_dirs();
+	struct ufa_list *list_dirs_config = ufa_config_dirs(true);
 	struct ufa_list *list_add = NULL;
 	struct ufa_list *list_remove = NULL;
 
@@ -156,15 +182,13 @@ static void reload_config()
 			bool r = ufa_hashtable_remove(table_new_dirs, i->data);
 			assert(r == true);
 		} else {
-			bool r = ufa_hashtable_put(table_new_dirs, i->data,
-						   int_dup(wd));
+			bool r = ufa_hashtable_put(
+			    table_new_dirs, ufa_strdup(i->data), int_dup(wd));
 			ufa_debug("Put %s - %d on table_new_dirs", i->data, wd);
 			// assert element already exist
 			assert(r == false);
 		}
 	}
-
-	log_current_watched_dirs();
 
 	// discarding temporary state
 	ufa_list_free_full(list_add, free);
@@ -175,6 +199,8 @@ static void reload_config()
 	// discard old list and set and points it to the new one
 	ufa_hashtable_free(table_current_dirs);
 	table_current_dirs = table_new_dirs;
+
+	log_current_watched_dirs();
 }
 
 static int check_and_create_config_dir()
@@ -229,46 +255,9 @@ end:
 	return ret;
 }
 
-/**
- * Reads config file (DIRS_FILE_NAME) and gets all valid (existing)
- * directories listed.
- *
- * @return List of dirs in DIRS_FILE_NAME
- */
-static struct ufa_list *get_valid_dirs()
-{
-	const size_t MAX_LINE = 1024;
-	struct ufa_list *list = NULL;
-	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
-	char *dirs_file = ufa_util_joinpath(cfg_dir, DIRS_FILE_NAME, NULL);
-
-	ufa_info("Reading config file %s", dirs_file);
-	// FIXME handle error on open file
-	FILE *f = fopen(dirs_file, "r");
-
-	char linebuf[MAX_LINE];
-	while (fgets(linebuf, MAX_LINE, f)) {
-		char *line = ufa_str_trim(linebuf);
-		if (!ufa_str_startswith(line, "#") &&
-		    !ufa_util_strequals(line, "")) {
-			if (!ufa_util_isdir(line)) {
-				ufa_warn("%s is not a dir", line);
-			} else {
-				ufa_debug("%s is a valid dir", line);
-				list = ufa_list_append(list, ufa_strdup(line));
-			}
-		}
-	}
-	free(dirs_file);
-	free(cfg_dir);
-	return list;
-}
-
-
 
 int main(int argc, char *argv[])
 {
-
 	// FIXME daemonize process
 	table_current_dirs = ufa_hashtable_new(ufa_str_hash,
 					       ufa_util_strequals,
@@ -283,25 +272,29 @@ int main(int argc, char *argv[])
 		exit(ret);
 	}
 
-	struct ufa_list *list_dirs_config = get_valid_dirs();
+	struct ufa_list *list_dirs_config = ufa_config_dirs(true);
 
 	if (!ufa_monitor_init()) {
 		exit(-1);
 	}
 
 	ufa_debug("Adding watcher to config dir: %s", cfg_dir);
-	ufa_monitor_add_watcher(cfg_dir, CONFIG_DIR_MASK, callback_event_config);
+	ufa_monitor_add_watcher(cfg_dir, CONFIG_DIR_MASK,
+				callback_event_config);
 
 	ufa_debug("Adding watcher to repo list_dirs_config");
 	for (UFA_LIST_EACH(i, list_dirs_config)) {
-		ufa_hashtable_put(table_current_dirs, ufa_strdup(i->data), NULL);
+		ufa_hashtable_put(table_current_dirs, ufa_strdup(i->data),
+				  NULL);
 		ufa_debug("Adding watcher to: %s", i->data);
-		int wd = ufa_monitor_add_watcher(i->data, REPO_DIR_MASK, callback_event_repo);
+		int wd = ufa_monitor_add_watcher(i->data, REPO_DIR_MASK,
+						 callback_event_repo);
 		if (wd < 0) {
 			ufa_warn("Error watching %s", i->data);
 		} else {
-			bool r = ufa_hashtable_put(table_current_dirs, ufa_strdup(i->data),
-					  int_dup(wd));
+			bool r =
+			    ufa_hashtable_put(table_current_dirs,
+					      ufa_strdup(i->data), int_dup(wd));
 			assert(r == false);
 		}
 	}

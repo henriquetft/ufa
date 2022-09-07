@@ -7,20 +7,15 @@
  * For the terms of usage and distribution, please see COPYING file.
  */
 
+#include "core/data.h"
 #include "core/repo.h"
 #include "util/list.h"
 #include "util/logging.h"
 #include "util/misc.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
-/* ========================================================================== */
-/* FUNCTIONS -- DECLARATION                                                   */
-/* ========================================================================== */
-
-static void print_usage(FILE *stream);
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
@@ -53,7 +48,8 @@ static void print_usage(FILE *stream)
 		"\nOPTIONS\n"
 		"  -h\t\tPrint this help and quit\n"
 		"  -v\t\tPrint version information and quit\n"
-		"  -r DIR\tRepository dir. Default is current dir\n"
+		"  -r DIR\tRepository dir. Default is current dir + list of "
+		"dirs on config file \n"
 		"  -a ATTRIBUTE\tFind by attribute. e.g. attribute=value\n"
 		"  -t tag TAG\tFind by tag\n"
 		"  -l LOG_LEVEL\tLog levels: debug, info, warn, error, fatal\n"
@@ -89,14 +85,14 @@ static void _add_attr(char *optarg, struct ufa_list **attrs)
 			  parts->data, parts->next->data, str_mm);
 		struct ufa_repo_filterattr *filter =
 		    ufa_repo_filterattr_new(parts->data, parts->next->data, mm);
-		ufa_list_free_full(parts, free);
+		ufa_list_free_full(parts, ufa_free);
 		*attrs = ufa_list_append(*attrs, filter);
 	} else {
 		struct ufa_repo_filterattr *filter =
 		    ufa_repo_filterattr_new(attr, NULL, UFA_REPO_EQUAL);
 		*attrs = ufa_list_append(*attrs, filter);
 	}
-	free(attr);
+	ufa_free(attr);
 }
 
 int main(int argc, char *argv[])
@@ -107,12 +103,14 @@ int main(int argc, char *argv[])
 
 	int opt;
 	char *repository = NULL;
+	char *cwd = NULL;
 	struct ufa_error *err = NULL;
 	char *tag = NULL;
 
 	struct ufa_list *attrs = NULL;
 	struct ufa_list *tags = NULL;
 	struct ufa_list *result = NULL;
+	struct ufa_list *list_dirs = NULL;
 
 	bool error_usage = false;
 	int exit_status = EX_OK;
@@ -171,36 +169,37 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	if (repository == NULL) {
-		// repository = ufa_util_get_current_dir();
-		// ufa_debug("Using CWD as repository: %s", repository);
-		fprintf(stderr, "error: you must specify a repository path\n");
-		exit_status = EXIT_FAILURE;
-		goto end;
+
+	if (repository != NULL) {
+		list_dirs = ufa_list_append(list_dirs, ufa_strdup(repository));
+		result = ufa_data_search(list_dirs, attrs, tags, false, &err);
+	} else {
+		cwd = ufa_util_get_current_dir();
+		if (ufa_repo_isrepo(cwd)) {
+			list_dirs = ufa_list_append(list_dirs, ufa_strdup(cwd));
+		}
+		result = ufa_data_search(list_dirs, attrs, tags, true, &err);
 	}
 
-	if (!ufa_repo_init(repository, &err)) {
-		ufa_error_print_and_free(err);
-		exit_status = EXIT_FAILURE;
-		goto end;
-	}
-
-	result = ufa_repo_search(attrs, tags, &err);
 	if (err) {
 		ufa_error_print(err);
 		exit_status = 1;
+		goto end;
 	}
 
 	// print result
-	for (UFA_LIST_EACH(iter_result, result)) {
-		printf("%s\n", (char *)iter_result->data);
+	for (UFA_LIST_EACH(i, result)) {
+		printf("%s\n", (char *) i->data);
 	}
 
 end:
 	ufa_error_free(err);
-	free(repository);
+	ufa_free(repository);
+	ufa_free(cwd);
+	ufa_list_free_full(list_dirs, ufa_free);
 	ufa_list_free_full(attrs, ufa_repo_filterattr_free);
-	ufa_list_free_full(tags, free);
-	ufa_list_free_full(result, free);
+	ufa_list_free_full(tags, ufa_free);
+	ufa_list_free_full(result, ufa_free);
+	ufa_data_close();
 	return exit_status;
 }
