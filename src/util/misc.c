@@ -21,6 +21,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <libgen.h>
 
 int ufa_str_startswith(const char *str, const char *prefix)
 {
@@ -40,8 +41,8 @@ int ufa_str_endswith(const char *str, const char *suffix)
 }
 
 static char *_join_path(const char *delim,
-			 const char *first_element,
-			 va_list *ap)
+			const char *first_element,
+			va_list *ap)
 {
 	char *next = (char *)first_element;
 	char *buf = ufa_strdup(next);
@@ -90,6 +91,22 @@ char *ufa_util_getfilename(const char *filepath)
 	ufa_list_free_full(split, free);
 	return last_part;
 }
+
+char *ufa_util_dirname(const char *filepath)
+{
+	char *ret = NULL;
+	char *s = ufa_strdup(filepath);
+	ret = ufa_strdup(dirname(s));
+	ufa_free(s);
+	return ret;
+}
+
+char *ufa_util_abspath(const char *path)
+{
+	char *abspath = realpath(path, NULL);
+	return abspath;
+}
+
 
 struct ufa_list *ufa_str_split(const char *str, const char *delim)
 {
@@ -295,4 +312,9 @@ int ufa_str_hash(const char *str)
 		h = h*31 + *str;
 	}
 	return h;
+}
+
+void ufa_free(void *p)
+{
+	free(p);
 }

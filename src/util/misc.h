@@ -14,6 +14,8 @@
 
 #define ufa_return_val_ifnot(expr, val) if (!(expr)) { return val; }
 
+#define if_goto(cond, label)    if (cond) { goto label; }
+
 /** Macro to use with FOR statement to iterate over arrays
  * e.g. for (UFA_ARRAY_EACH(i, array)) { ... }*/
 #define UFA_ARRAY_EACH(i, arr) size_t i = 0; i < ARRAY_SIZE(arr); i++
@@ -26,6 +28,10 @@ char *ufa_util_joinpath(const char *first_element, ...);
  * (separated by file separador).
  */
 char *ufa_util_getfilename(const char *filepath);
+
+char *ufa_util_dirname(const char *filepath);
+
+char *ufa_util_abspath(const char *path);
 
 char *ufa_util_strcat(const char *str1, const char *str2);
 
@@ -68,5 +74,7 @@ char *ufa_str_rtrim(char *s);
 char *ufa_str_trim(char *s);
 
 int ufa_str_hash(const char *str);
+
+void ufa_free(void *p);
 
 #endif /* MISC_H_ */
