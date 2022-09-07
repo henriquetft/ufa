@@ -68,6 +68,23 @@ struct ufa_list *ufa_list_insert(struct ufa_list *list, unsigned int pos,
 	return list;
 }
 
+struct ufa_list *ufa_list_concat(struct ufa_list *list, struct ufa_list *list2)
+{
+	if (list == NULL) {
+		return list2;
+	}
+
+	if (list2 == NULL) {
+		return list;
+	}
+
+	struct ufa_list *last = ufa_list_get_last(list);
+	last->next = list2;
+	list2->prev = last;
+
+	return list;
+
+}
 struct ufa_list *ufa_list_get(struct ufa_list *list, unsigned int pos)
 {
 	unsigned int x;

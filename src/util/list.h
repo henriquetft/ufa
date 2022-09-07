@@ -29,6 +29,8 @@ struct ufa_list *ufa_list_prepend(struct ufa_list *list, void *element);
 struct ufa_list *ufa_list_insert(struct ufa_list *list, unsigned int pos,
 				 void *element);
 
+struct ufa_list *ufa_list_concat(struct ufa_list *list, struct ufa_list *list2);
+
 struct ufa_list *ufa_list_get(struct ufa_list *list, unsigned int pos);
 
 struct ufa_list *ufa_list_get_first(struct ufa_list *list);
