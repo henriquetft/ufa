@@ -215,14 +215,14 @@ class UFACommand:
     def get_all_tags(self, repo):
         """ Executes ufatag list-all """
         stdout = Commands.execute(
-            "{} -r {} list-all".format(self.ufatag, repo))
+            "{} -l off -r {} list-all".format(self.ufatag, repo))
         list_tags = stdout.split('\n')[:-1]
         return list_tags
 
     def get_tags_for_file(self, repo, filename):
         """ Executes ufatag list FILE """
         stdout = Commands.execute(
-            "{} -r {} list {}".format(self.ufatag,
+            "{} -l off -r {} list {}".format(self.ufatag,
                                       shlex.quote(repo),
                                       shlex.quote(filename)))
         list_tags = stdout.split('\n')[:-1]
@@ -232,7 +232,7 @@ class UFACommand:
         """ Executes ufatag set FILE tag """
         for tag in tag_list:
             Commands.execute(
-                "{} -r {} set {} {}".format(self.ufatag,
+                "{} -l off -r {} set {} {}".format(self.ufatag,
                                             shlex.quote(repo),
                                             shlex.quote(filename),
                                             tag))
@@ -241,20 +241,20 @@ class UFACommand:
         """ Executes ufatag unset FILE tag """
         for tag in tag_list:
             Commands.execute(
-                "{} -r {} unset {} {}".format(self.ufatag,
+                "{} -l off -r {} unset {} {}".format(self.ufatag,
                                               shlex.quote(repo),
                                               shlex.quote(filename),
                                               tag))
 
     def create_tag(self, repo, tagname):
-        Commands.execute("{} -r {} create {}".format(self.ufatag,
+        Commands.execute("{} -l off -r {} create {}".format(self.ufatag,
                                                      shlex.quote(repo),
                                                      tagname))
 
     def get_attrs_for_file(self, repo, filename):
         """ Executes ufaattr describe FILE """
         stdout = Commands.execute(
-            "{} -r {} describe {}".format(self.ufaattr,
+            "{} -l off -r {} describe {}".format(self.ufaattr,
                                           shlex.quote(repo),
                                           shlex.quote(filename)))
         list_attrs = stdout.split('\n')[:-1]
@@ -264,7 +264,7 @@ class UFACommand:
     def get_attr_value_for_file(self, repo, filename, attribute):
         """ Executes ufaattr get FILE ATTRIBUTE """
         stdout = Commands.execute(
-            "{} -r {} get {} {}".format(self.ufaattr,
+            "{} -l off -r {} get {} {}".format(self.ufaattr,
                                         shlex.quote(repo),
                                         shlex.quote(filename),
                                         attribute))
@@ -272,7 +272,7 @@ class UFACommand:
 
     def set_attr_value_for_file(self, repo, filename, attr, value):
         """ Executes ufaset FILE ATTR VALUE """
-        Commands.execute("{} -r {} set {} {} {}".format(self.ufaattr,
+        Commands.execute("{} -l off -r {} set {} {} {}".format(self.ufaattr,
                                                         shlex.quote(repo),
                                                         shlex.quote(filename),
                                                         attr,
