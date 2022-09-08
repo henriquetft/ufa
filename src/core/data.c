@@ -37,10 +37,8 @@ static void _add_set(ufa_hashtable_t *set, const struct ufa_list *i)
 static void init_repo_hashtable()
 {
 	if (repos == NULL) {
-		repos = ufa_hashtable_new(ufa_str_hash,
-					  ufa_util_strequals,
-					  ufa_free,
-					  ufa_repo_free);
+		repos = ufa_hashtable_new(ufa_str_hash, ufa_str_equals,
+					  ufa_free, ufa_repo_free);
 	}
 }
 
@@ -203,10 +201,8 @@ struct ufa_list *ufa_data_search(struct ufa_list *repo_dirs,
 	struct ufa_list *ret = NULL;
 	struct ufa_list *result_tmp = NULL;
 
-	ufa_hashtable_t *set = ufa_hashtable_new(ufa_str_hash,
-						 ufa_util_strequals,
-						 ufa_free,
-						 ufa_free);
+	ufa_hashtable_t *set =
+	    ufa_hashtable_new(ufa_str_hash, ufa_str_equals, ufa_free, ufa_free);
 	for (UFA_LIST_EACH(i, repo_dirs)) {
 		if (ufa_repo_isrepo((char *) i->data)) {
 			_add_set(set, i);

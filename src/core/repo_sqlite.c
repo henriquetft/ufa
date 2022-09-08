@@ -582,7 +582,7 @@ struct ufa_list *ufa_repo_listfiles(ufa_repo_t *repo,
 				    struct ufa_error **error)
 {
 	struct ufa_list *list = NULL;
-	if (ufa_util_strequals(dirpath, "/")) {
+	if (ufa_str_equals(dirpath, "/")) {
 		/* FIXME cache. it is better to clone all_tags */
 		list = ufa_repo_listtags(repo, error);
 	} else {

@@ -303,7 +303,7 @@ static int handle_command(char *command)
 {
 	int exit_status = EXIT_COMMAND_NOT_FOUND;
 	for (int pos = 0; pos < NUM_COMMANDS; pos++) {
-		if (ufa_util_strequals(command, commands[pos])) {
+		if (ufa_str_equals(command, commands[pos])) {
 			exit_status = handle_commands[pos]();
 		}
 	}
@@ -318,7 +318,7 @@ static int handle_help_option(char *command)
 {
 	int exit_code = EXIT_COMMAND_NOT_FOUND;
 	for (int pos = 0; pos < NUM_COMMANDS; pos++) {
-		if (ufa_util_strequals(command, commands[pos])) {
+		if (ufa_str_equals(command, commands[pos])) {
 			help_commands[pos](stdout);
 			exit_code = EX_OK;
 		}

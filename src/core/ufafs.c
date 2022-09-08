@@ -144,7 +144,7 @@ static int ufa_fuse_getattr(const char *path,
 	memset(stbuf, 0, sizeof(struct stat));
 
 	/* ROOT DIR */
-	if (ufa_util_strequals(path, "/")) {
+	if (ufa_str_equals(path, "/")) {
 		_copy_stat(stbuf, &stat_repository);
 
 		/* A FILE */

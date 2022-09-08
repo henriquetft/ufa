@@ -47,7 +47,7 @@ struct ufa_list *ufa_config_dirs(bool reload)
 	while (fgets(linebuf, MAX_LINE, file)) {
 		char *line = ufa_str_trim(linebuf);
 		if (!ufa_str_startswith(line, "#") &&
-		    !ufa_util_strequals(line, "")) {
+		    !ufa_str_equals(line, "")) {
 			if (!ufa_util_isdir(line)) {
 				ufa_warn("%s is not a dir", line);
 			} else {

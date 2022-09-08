@@ -103,6 +103,7 @@ char *ufa_util_dirname(const char *filepath)
 
 char *ufa_util_abspath(const char *path)
 {
+	// FIXME
 	char *abspath = realpath(path, NULL);
 	return abspath;
 }
@@ -200,7 +201,7 @@ bool ufa_util_mkdir(const char *dir, struct ufa_error **error)
 	return false;
 }
 
-int ufa_util_strequals(const char *str1, const char *str2)
+int ufa_str_equals(const char *str1, const char *str2)
 {
 	/* TODO write without strcmp */
 	return !strcmp(str1, str2);

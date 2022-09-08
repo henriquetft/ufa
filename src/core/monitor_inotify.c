@@ -436,8 +436,8 @@ bool ufa_monitor_init()
 					    free);
 	callbacks       = ufa_hashtable_new(int_hash, int_equals, free, NULL);
 
-	table_filename  = ufa_hashtable_new(ufa_str_hash, ufa_util_strequals,
-					   free, free);
+	table_filename  =
+	    ufa_hashtable_new(ufa_str_hash, ufa_str_equals, free, free);
 	// start thread
 	int ret = pthread_create(&events_loop_thread,
 				 NULL,

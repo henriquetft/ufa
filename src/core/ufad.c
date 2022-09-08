@@ -131,7 +131,7 @@ static void reload_config()
 	log_current_watched_dirs();
 
 	ufa_hashtable_t *table_new_dirs =
-	    ufa_hashtable_new(ufa_str_hash, ufa_util_strequals, free, free);
+	    ufa_hashtable_new(ufa_str_hash, ufa_str_equals, free, free);
 
 	// adding new dirs to list_add
 	for (UFA_LIST_EACH(i, list_dirs_config)) {
@@ -259,10 +259,8 @@ end:
 int main(int argc, char *argv[])
 {
 	// FIXME daemonize process
-	table_current_dirs = ufa_hashtable_new(ufa_str_hash,
-					       ufa_util_strequals,
-					       free,
-					       free);
+	table_current_dirs =
+	    ufa_hashtable_new(ufa_str_hash, ufa_str_equals, free, free);
 
 	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
 	ufa_info("Config dir: %s\n", cfg_dir);

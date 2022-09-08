@@ -183,7 +183,7 @@ static int handle_get()
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
 		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
-		if (ufa_util_strequals(attr_i->attribute, attr)) {
+		if (ufa_str_equals(attr_i->attribute, attr)) {
 			printf("%s\n", attr_i->value);
 			found = true;
 		}
@@ -236,7 +236,7 @@ static int handle_command(char *command)
 {
 	int exit_status = EXIT_COMMAND_NOT_FOUND;
 	for (UFA_ARRAY_EACH(i, commands)) {
-		if (ufa_util_strequals(command, commands[i])) {
+		if (ufa_str_equals(command, commands[i])) {
 			ufa_debug("executing command '%s'", command);
 			exit_status = handle_commands[i]();
 		}
@@ -252,7 +252,7 @@ static int handle_help_option(char *command)
 {
 	int exit_code = EXIT_COMMAND_NOT_FOUND;
 	for (UFA_ARRAY_EACH(i, commands)) {
-		if (ufa_util_strequals(command, commands[i])) {
+		if (ufa_str_equals(command, commands[i])) {
 			help_commands[i](stdout);
 			exit_code = EX_OK;
 		}

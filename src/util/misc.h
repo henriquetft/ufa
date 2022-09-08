@@ -35,7 +35,7 @@ char *ufa_util_abspath(const char *path);
 
 char *ufa_util_strcat(const char *str1, const char *str2);
 
-int ufa_util_strequals(const char *str1, const char *str2);
+int ufa_str_equals(const char *str1, const char *str2);
 
 int ufa_util_isdir(const char *filename);
 
