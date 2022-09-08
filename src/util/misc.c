@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <limits.h>
 
 int ufa_str_startswith(const char *str, const char *prefix)
 {
@@ -103,9 +104,12 @@ char *ufa_util_dirname(const char *filepath)
 
 char *ufa_util_abspath(const char *path)
 {
-	// FIXME
-	char *abspath = realpath(path, NULL);
-	return abspath;
+	char buf[PATH_MAX];
+	if (realpath(path, buf) == NULL) {
+		return NULL;
+	}
+
+	return ufa_strdup(buf);
 }
 
 
