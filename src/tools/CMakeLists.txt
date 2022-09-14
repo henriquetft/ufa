@@ -1,4 +1,3 @@
-
 # Adding executable ufaattr
 add_executable(ufaattr ufaattr.c)
 target_include_directories(ufaattr PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
