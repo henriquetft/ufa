@@ -53,5 +53,9 @@ bool ufa_data_unsetattr(const char *filepath,
 struct ufa_list *ufa_data_getattr(const char *filepath,
 				  struct ufa_error **error);
 
+bool ufa_data_removefile(char *filepath, struct ufa_error **error);
+
+bool ufa_data_renamefile(char *oldfilepath, char *newfilepath,
+			 struct ufa_error **error);
 
 #endif /* UFA_DATA_H_ */

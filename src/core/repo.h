@@ -6,11 +6,11 @@
 #include <stdbool.h>
 
 enum ufa_repo_error {
-	UFA_ERROR_DATABASE,
-	UFA_ERROR_NOTDIR,
-	UFA_ERROR_FILE,
-	UFA_ERROR_STATE,
-	UFA_ERROR_ARGS,
+	UFA_ERROR_DATABASE       = 0,
+	UFA_ERROR_NOTDIR         = 1,
+	UFA_ERROR_FILE           = 2,
+	UFA_ERROR_FILE_NOT_IN_DB = 3,
+	UFA_ERROR_ARGS           = 4,
 };
 
 enum ufa_repo_matchmode {
@@ -113,5 +113,11 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error);
 void ufa_repo_free(ufa_repo_t *repo);
 
 bool ufa_repo_isrepo(char *directory);
+
+bool ufa_repo_removefile(ufa_repo_t *repo, char *filepath,
+			 struct ufa_error **error);
+
+bool ufa_repo_renamefile(ufa_repo_t *repo, char *oldfilepath, char *newfilepath,
+			 struct ufa_error **error);
 
 #endif /* UFA_REPO_H_ */

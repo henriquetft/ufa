@@ -23,20 +23,20 @@
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
-
+// FIXME NOT NULL FOR ATTRIBUTE TABLE
 #define STR_CREATE_TABLE \
 "CREATE TABLE IF NOT EXISTS \"attribute\" ( \n"\
 	"\"id\"	INTEGER PRIMARY KEY AUTOINCREMENT, \n"\
-	"\"id_file\"	INTEGER, \n"\
-	"\"name\"	TEXT, \n"\
+	"\"id_file\"	INTEGER NOT NULL, \n"\
+	"\"name\"	TEXT NOT NULL, \n"\
 	"\"value\"	TEXT, \n"\
-	"FOREIGN KEY(\"id_file\") REFERENCES \"file\"(\"id\") \n"\
+	"FOREIGN KEY(\"id_file\") REFERENCES \"file\"(\"id\") ON DELETE CASCADE\n"\
 ");\n"\
 "CREATE TABLE IF NOT EXISTS \"file_tag\" (\n" \
 	"\"id\"	INTEGER PRIMARY KEY AUTOINCREMENT, \n"\
 	"\"id_file\"	INTEGER, \n"\
 	"\"id_tag\"	INTEGER, \n"\
-	"FOREIGN KEY(\"id_file\") REFERENCES \"file\"(\"id\"), \n"\
+	"FOREIGN KEY(\"id_file\") REFERENCES \"file\"(\"id\") ON DELETE CASCADE, \n"\
 	"FOREIGN KEY(\"id_tag\") REFERENCES \"tag\"(\"id\") \n"\
 "); \n"\
 "CREATE TABLE IF NOT EXISTS \"file\" ( \n"\
@@ -92,8 +92,8 @@ bool _db_prepare(ufa_repo_t *repo, sqlite3_stmt **stmt, char *sql, struct ufa_er
 	return true;
 }
 
-static bool _db_execute(ufa_repo_t *repo, sqlite3_stmt *stmt, struct ufa_error **error,
-			const char *func_name)
+static bool _db_execute(ufa_repo_t *repo, sqlite3_stmt *stmt,
+			struct ufa_error **error, const char *func_name)
 {
 	bool status = true;
 	int r = sqlite3_step(stmt);
@@ -466,8 +466,8 @@ int _get_file_id(ufa_repo_t *repo, const char *filepath,
 		file_id = 0;
 		goto end;
 	} else if (file_id == 0) {
-		ufa_error_new(error, UFA_ERROR_STATE,
-			      "file '%s' does not exist", filename);
+		ufa_error_new(error, UFA_ERROR_FILE_NOT_IN_DB,
+			      "file '%s' does not exist in DB", filename);
 	}
 end:
 	free(filename);
@@ -1055,13 +1055,19 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 
 	char *repository = NULL;
 
-	if (!ufa_util_isfile(filepath)) {
+
+	if (ufa_util_isdir(filepath)) {
+		dirname = ufa_strdup(filepath);
+	} else if (ufa_util_isfile(filepath)) {
+		dirname = ufa_util_dirname(filepath);
+	} else {
 		ufa_error_new(error, UFA_ERROR_FILE,
 			      "%s is not a file", filepath);
 		goto end;
 	}
 
-	dirname = ufa_util_dirname(filepath);
+
+
 	repodb_file = ufa_util_joinpath(dirname, REPOSITORY_FILENAME, NULL);
 
 	// use .db
@@ -1125,4 +1131,67 @@ bool ufa_repo_isrepo(char *directory)
 	ufa_free(fpath);
 
 	return ret;
+}
+
+bool ufa_repo_removefile(ufa_repo_t *repo, char *filepath,
+			 struct ufa_error **error)
+{
+	sqlite3_stmt *stmt = NULL;
+	bool status = false;
+	char *sql = "DELETE FROM file WHERE id=?";
+
+	int file_id;
+	if (!(file_id = _get_file_id(repo, filepath, error))) {
+		goto end;
+	}
+
+	if (!db_prepare(repo, &stmt, sql, error)) {
+		goto end;
+	}
+
+	sqlite3_bind_int(stmt, 1, file_id);
+
+	if (!db_execute(repo, stmt, error)) {
+		goto end;
+	}
+
+	int affected = sqlite3_changes(repo->db);
+	status = (affected == 1);
+end:
+	return status;
+}
+
+
+bool ufa_repo_renamefile(ufa_repo_t *repo, char *oldfilepath, char *newfilepath,
+			 struct ufa_error **error)
+{
+	sqlite3_stmt *stmt = NULL;
+	char *new_filename = NULL;
+	bool status = false;
+	char *sql = "UPDATE file SET name=? WHERE id=?";
+
+	int file_id;
+	if (!(file_id = _get_file_id(repo, oldfilepath, error))) {
+		goto end;
+	}
+
+	if (!db_prepare(repo, &stmt, sql, error)) {
+		goto end;
+	}
+
+	new_filename = ufa_util_getfilename(newfilepath);
+	sqlite3_bind_text(stmt, 1, new_filename, -1, NULL);
+	sqlite3_bind_int(stmt, 2, file_id);
+
+	if (!db_execute(repo, stmt, error)) {
+		goto end;
+	}
+
+	int affected = sqlite3_changes(repo->db);
+	status = (affected == 1);
+
+end:
+	ufa_free(new_filename);
+	sqlite3_finalize(stmt);
+	return status;
 }

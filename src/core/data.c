@@ -253,5 +253,23 @@ end:
 	return ret;
 }
 
+bool ufa_data_removefile(char *filepath, struct ufa_error **error)
+{
+	char *dir = ufa_util_dirname(filepath);
+	ufa_repo_t *repo = get_repo_for(dir, error);
+	ufa_free(dir);
+	if (repo == NULL) {
+		return false;
+	}
+	return ufa_repo_removefile(repo, filepath, error);
+}
 
-
+bool ufa_data_renamefile(char *oldfilepath, char *newfilepath,
+			 struct ufa_error **error)
+{
+	ufa_repo_t *repo = get_repo_for(newfilepath, error);
+	if (repo == NULL) {
+		return false;
+	}
+	return ufa_repo_renamefile(repo, oldfilepath, newfilepath, error);
+}
