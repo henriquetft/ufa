@@ -125,7 +125,7 @@ static void print_usage(FILE *stream)
 		"  list\t\tList the tags on file\n"
 		"  clear\t\tUnset all tags on file\n"
 		"  list-all\tList all tags\n"
-		"  create\tCreate a tag"
+		"  create\tCreate a tag\n"
 		"\n"
 		"Run '%s COMMAND -h' for more information on a command.\n"
 		"\n",
