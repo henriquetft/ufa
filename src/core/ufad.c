@@ -7,11 +7,14 @@
  * For the terms of usage and distribution, please see COPYING file.
  */
 
+#include "core/data.h"
+#include "core/repo.h"
 #include "core/monitor.h"
 #include "core/config.h"
 #include "util/hashtable.h"
 #include "util/logging.h"
 #include "util/misc.h"
+#include "util/error.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -69,22 +72,26 @@ static void print_event(const struct ufa_event *event)
  */
 void callback_event_repo(const struct ufa_event *event)
 {
+	struct ufa_error *error = NULL;
 	// handle .goutputstream-* files
 	print_event(event);
 	if (event->event == UFA_MONITOR_MOVE) {
 		if (event->target1 && event->target2) {
-			// FIXME rename
-			printf("rename\n");
+			ufa_data_renamefile(event->target1, event->target2,
+					    &error);
 		} else if (event->target1) {
-			printf("moving to ouside\n");
-			// FIXME remove
+			ufa_data_removefile(event->target1, &error);
 		} else if (event->target2) {
-			printf("moving to inside\n");
-			// FIXME add
+			// file added in folder. do nohitng.
 		} else {
 			assert(false);
 		}
 	}
+
+	if (error && error->code != UFA_ERROR_FILE_NOT_IN_DB) {
+		ufa_error_print_and_free(error);
+	}
+
 }
 
 
