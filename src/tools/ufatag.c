@@ -1,12 +1,14 @@
-/*
- * Copyright (c) 2021 Henrique Teófilo
- * All rights reserved.
- *
- * Implementation of ufatag command line utility.
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Implementation of ufatag command line utility.                             */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
 
+#include "tools/cli.h"
 #include "core/repo.h"
 #include "core/data.h"
 #include "util/list.h"
@@ -24,63 +26,36 @@
 static void print_usage(FILE *stream);
 
 static void print_usage_set(FILE *stream);
-
 static void print_usage_unset(FILE *stream);
-
 static void print_usage_list(FILE *stream);
-
 static void print_usage_clear(FILE *stream);
-
 static void print_usage_list_all(FILE *stream);
-
 static void print_usage_create(FILE *stream);
 
 static int handle_unset();
-
 static int handle_set();
-
 static int handle_list();
-
 static int handle_clear();
-
 static int handle_list_all();
-
 static int handle_create();
 
-static int handle_command(char *command);
-
-static int handle_help_option(char *command);
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
-#define HAS_NEXT_ARG (optind < global_args)
-#define HAS_MORE_ARGS(num) (optind + num - 1 < global_args)
-#define NEXT_ARG global_argv[optind++]
-
-#define EXIT_COMMAND_NOT_FOUND 127
-
 static char *repository = NULL;
 
-static int global_args = -1;
-static char **global_argv = NULL;
+char *commands[] = {
+    "set", "unset", "list",
+     "clear", "list-all", "create"
+};
 
-static char *program_name = "";
-static char *program_version = "0.1";
-
-typedef int (*handle_command_f)();
-typedef void (*help_command_f)(FILE *data);
-
-static const int NUM_COMMANDS = 6;
-static char *commands[] = {"set",   "unset",	"list",
-			   "clear", "list-all", "create"};
-
-static help_command_f help_commands[] = {
+help_command_f help_commands[] = {
     print_usage_set,   print_usage_unset,    print_usage_list,
     print_usage_clear, print_usage_list_all, print_usage_create,
 };
-static handle_command_f handle_commands[] = {
+handle_command_f handle_commands[] = {
     handle_set,	  handle_unset,	   handle_list,
     handle_clear, handle_list_all, handle_create,
 };
@@ -299,37 +274,6 @@ static int handle_create()
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
 
-static int handle_command(char *command)
-{
-	int exit_status = EXIT_COMMAND_NOT_FOUND;
-	for (int pos = 0; pos < NUM_COMMANDS; pos++) {
-		if (ufa_str_equals(command, commands[pos])) {
-			exit_status = handle_commands[pos]();
-		}
-	}
-	if (exit_status == EXIT_COMMAND_NOT_FOUND) {
-		fprintf(stderr, "\ninvalid command");
-		fprintf(stderr, "\nSee %s -h\n", program_name);
-	}
-	return exit_status;
-}
-
-static int handle_help_option(char *command)
-{
-	int exit_code = EXIT_COMMAND_NOT_FOUND;
-	for (int pos = 0; pos < NUM_COMMANDS; pos++) {
-		if (ufa_str_equals(command, commands[pos])) {
-			help_commands[pos](stdout);
-			exit_code = EX_OK;
-		}
-	}
-	if (exit_code != EX_OK) {
-		fprintf(stderr, "invalid command\n");
-	}
-	return exit_code;
-}
-
-
 
 int main(int argc, char *argv[])
 {
@@ -359,7 +303,7 @@ int main(int argc, char *argv[])
 			goto end;
 		case 'h':
 			if (HAS_NEXT_ARG) {
-				exit_status = handle_help_option(NEXT_ARG);
+				exit_status = handle_help_command(NEXT_ARG, ARRAY_SIZE(commands));
 			} else {
 				print_usage(stdout);
 				exit_status = EX_OK;
@@ -400,7 +344,7 @@ int main(int argc, char *argv[])
 
 	char *command = NEXT_ARG;
 
-	exit_status = handle_command(command);
+	exit_status = handle_command(command, ARRAY_SIZE(commands));
 
 end:
 	ufa_free(repository);

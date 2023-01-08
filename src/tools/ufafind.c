@@ -1,12 +1,14 @@
-/*
- * Copyright (c) 2022 Henrique Teófilo
- * All rights reserved.
- *
- * Implementation of ufafind command line utility.
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Implementation of ufafind command line utility.                            */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
 
+#include "tools/cli.h"
 #include "core/data.h"
 #include "core/repo.h"
 #include "util/list.h"
@@ -21,19 +23,9 @@
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
-#define HAS_NEXT_ARG (optind < global_args)
-#define HAS_MORE_ARGS(num) (optind + num - 1 < global_args)
-#define NEXT_ARG global_argv[optind++]
-
-#define EXIT_COMMAND_NOT_FOUND 127
-
-static int global_args = -1;
-static char **global_argv = NULL;
-
-static char *program_name = "";
-static char *program_version = "0.1";
 
 static char *match_mode_str[] = {"=", "~="};
+
 
 /* ========================================================================== */
 /* IMPLEMENTATION                                                             */
