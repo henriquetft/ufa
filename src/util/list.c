@@ -1,16 +1,19 @@
-/*
- * Copyright (c) 2021 Henrique Teófilo
- * All rights reserved.
- *
- * Implementation of a doubly linked list.
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Doubly linked list (implementation of list.h)                              */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 
 #include "list.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 /* ========================================================================== */
 /* AUXILIARY FUNCTIONS - DECLARATION                                          */
@@ -159,6 +162,19 @@ void ufa_list_free_full(struct ufa_list *list, ufa_list_free_func freefunc)
 		list = list->next;
 		free(toFree);
 	}
+}
+
+
+struct ufa_list *ufa_list_find_by_data(const struct ufa_list *list,
+				       const void *data,
+				       bool (*eq_func)(void *element, void *user_data))
+{
+	for (; (list != NULL); list = list->next) {
+		if (eq_func(list->data, data)) {
+			return list;
+		}
+	}
+	return NULL;
 }
 
 void ufa_list_free(struct ufa_list *list)

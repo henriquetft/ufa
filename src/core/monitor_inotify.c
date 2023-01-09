@@ -1,11 +1,13 @@
-/*
-* Copyright (c) 2022 Henrique Teófilo
-* All rights reserved.
-*
-* Implementation of monitor module (monitor.h) using inotify.
-*
-* For the terms of usage and distribution, please see COPYING file.
-*/
+/* ========================================================================== */
+/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Implementation of monitor module (monitor.h) using inotify.                */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 
 #include "core/monitor.h"
 #include "util/hashtable.h"

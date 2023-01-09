@@ -1,3 +1,14 @@
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Definitions for Logging functions                                          */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
+
 #ifndef LOGGING_H_
 #define LOGGING_H_
 

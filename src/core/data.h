@@ -1,3 +1,14 @@
+/* ========================================================================== */
+/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Functions that allows the user to interact with repositories               */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
+
 #ifndef UFA_DATA_H_
 #define UFA_DATA_H_
 

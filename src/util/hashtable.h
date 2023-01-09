@@ -1,3 +1,13 @@
+/* ========================================================================== */
+/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Definitions for a simple hash table implementation                         */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 
 #ifndef HASHTABLE_H_
 #define HASHTABLE_H_

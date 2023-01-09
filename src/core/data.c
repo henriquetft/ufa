@@ -1,3 +1,13 @@
+/* ========================================================================== */
+/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Implementation of data functions (data.h).                                 */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 #include "core/data.h"
 #include "util/hashtable.h"
 #include "core/config.h"
@@ -8,9 +18,9 @@
 #include <stdbool.h>
 #include <assert.h>
 
+
 /** Maps WD -> filename */
 static ufa_hashtable_t *repos = NULL;
-
 
 
 /* ========================================================================== */
@@ -213,7 +223,10 @@ struct ufa_list *ufa_data_search(struct ufa_list *repo_dirs,
 	}
 
 	if (include_repo_from_config) {
-		struct ufa_list *list_dirs_cfg = ufa_config_dirs(false);
+		struct ufa_list *list_dirs_cfg = ufa_config_dirs(false, error);
+		if (list_dirs_cfg == NULL && *error) {
+			goto end;
+		}
 		for (UFA_LIST_EACH(i, list_dirs_cfg)) {
 			_add_set(set, i);
 		}

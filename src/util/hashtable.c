@@ -1,11 +1,13 @@
-/*
- * Copyright (c) 2022 Henrique Teófilo
- * All rights reserved.
- *
- * A simple hash table implementation.
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* A simple hash table (implementation of hashtable.h)                        */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 
 #include "util/list.h"
 #include "hashtable.h"

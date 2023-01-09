@@ -1,3 +1,14 @@
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Definitions for miscellaneous utility function.                            */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
+
 #ifndef MISC_H_
 #define MISC_H_
 
@@ -9,16 +20,38 @@
 
 #define UFA_FILE_SEPARATOR "/"
 
-/** Size of an array */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+/**
+ * Size of an array
+ */
+#define   ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-#define ufa_return_val_ifnot(expr, val) if (!(expr)) { return val; }
+/**
+ * Return val when expr is false
+ */
+#define   ufa_return_val_ifnot(expr, val) if (!(expr)) { return val; }
 
-#define if_goto(cond, label)    if (cond) { goto label; }
+/**
+ * Return (with no value) when expr is false
+ */
+#define   ufa_return_ifnot(expr) if (!(expr)) { return; }
 
-/** Macro to use with FOR statement to iterate over arrays
- * e.g. for (UFA_ARRAY_EACH(i, array)) { ... }*/
-#define UFA_ARRAY_EACH(i, arr) size_t i = 0; i < ARRAY_SIZE(arr); i++
+/**
+ * Return when expr ir true
+ */
+#define   ufa_return_if(expr) if (expr) { return; }
+
+/**
+ * Go to label if cond is true
+ */
+#define   if_goto(cond, label)   if (cond) { goto label; }
+
+/**
+ * Macro to use with FOR statement to iterate over arrays
+ * e.g. for (UFA_ARRAY_EACH(i, array)) { ... }
+ */
+#define   UFA_ARRAY_EACH(i, arr) size_t i = 0; i < ARRAY_SIZE(arr); i++
+
+
 
 char *ufa_util_joinpath(const char *first_element, ...);
 

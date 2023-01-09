@@ -1,3 +1,14 @@
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Error handling utilities (implementation of error.h)                       */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
+
 #include "util/error.h"
 #include "util/misc.h"
 #include <stdio.h>

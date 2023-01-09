@@ -1,11 +1,13 @@
-/*
- * Copyright (c) 2021 Henrique Teófilo
- * All rights reserved.
- *
- * Miscellaneous utility functions
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Miscellaneous utility functions (implementation of misc.h).                */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 
 #include "misc.h"
 #include "error.h"
@@ -22,7 +24,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libgen.h>
-#include <limits.h>
+
 
 int ufa_str_startswith(const char *str, const char *prefix)
 {

@@ -1,3 +1,14 @@
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Logging functions (implementation of logging.h)                            */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
+
 #include "util/logging.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -16,23 +27,23 @@ struct log_level_attrs {
 
 static const struct log_level_attrs log_level_attr[5] = {
     {
-	"[DEBUG]:   ",
+	"[DEBUG]: ",
 	"\033[0;34m",
     },
     {
-	"[INFO ]:   ",
+	"[INFO ]: ",
 	"\033[0;36m",
     },
     {
-	"[WARN ]:   ",
+	"[WARN ]: ",
 	"\033[0;33m",
     },
     {
-	"[ERROR]:   ",
+	"[ERROR]: ",
 	"\033[0;31m",
     },
     {
-	"[FATAL]:   ",
+	"[FATAL]: ",
 	"\033[0;31m",
     },
 };

@@ -1,12 +1,15 @@
-/*
- * Copyright (c) 2021 Henrique Teófilo
- * All rights reserved.
- *
- * Implementation of repo module (repo.h) using sqlite3.
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Implementation of repo module (repo.h) using sqlite3.                      */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
 
+
+#include "core/errors.h"
 #include "core/repo.h"
 #include "util/error.h"
 #include "util/list.h"

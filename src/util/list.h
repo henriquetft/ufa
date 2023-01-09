@@ -1,5 +1,18 @@
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Definitions for doubly linked list                                         */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
+
 #ifndef UFA_LIST_H_
 #define UFA_LIST_H_
+
+#include <stdbool.h>
 
 /** Represents a node of the linked list */
 struct ufa_list {
@@ -10,6 +23,9 @@ struct ufa_list {
 
 typedef void (*ufa_list_for_each_func)(void *element, void *user_data);
 typedef void (*ufa_list_free_func)(void *data);
+
+#define ufa_list_contains(list, data, eqfunc)                                  \
+	(ufa_list_find_by_data(list, data, eqfunc) != NULL)
 
 /** Macro to rewind a list back to the first element */
 #define UFA_LIST_REWIND(list)                                                  \
@@ -47,6 +63,9 @@ struct ufa_list *ufa_list_unlink_node(struct ufa_list *list,
 
 void ufa_list_free_full(struct ufa_list *list, ufa_list_free_func freefunc);
 
+struct ufa_list *
+ufa_list_find_by_data(const struct ufa_list *list, const void *data,
+		      bool (*eq_func)(void *element, void *user_data));
 
 void ufa_list_free(struct ufa_list *list);
 
