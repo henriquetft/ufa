@@ -1,11 +1,13 @@
-/*
- * Copyright (c) 2022 Henrique Teófilo
- * All rights reserved.
- *
- * Implementation of UFA Daemon.
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Implementation of UFA Daemon.                                              */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 
 #include "core/data.h"
 #include "core/repo.h"
@@ -130,10 +132,15 @@ static void log_current_watched_dirs()
 static void reload_config()
 {
 	ufa_debug("Changing config file");
-
-	struct ufa_list *list_dirs_config = ufa_config_dirs(true);
+	struct ufa_error *error = NULL;
 	struct ufa_list *list_add = NULL;
 	struct ufa_list *list_remove = NULL;
+
+	struct ufa_list *list_dirs_config = ufa_config_dirs(true, &error);
+	if (error) {
+		ufa_error_print_and_free(error);
+		return;
+	}
 
 	log_current_watched_dirs();
 
@@ -210,57 +217,7 @@ static void reload_config()
 	log_current_watched_dirs();
 }
 
-static int check_and_create_config_dir()
-{
-	int ret = 0;
-	char *dirs_file = NULL;
-	char *cfg_dir = NULL;
-	FILE *out = NULL;
 
-	cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
-
-	if (!ufa_util_isdir(cfg_dir)) {
-		char *base_cfg_dir = ufa_util_config_dir(NULL);
-		if (ufa_util_isdir(base_cfg_dir)) {
-			ufa_debug("Creating dir '%s'", cfg_dir);
-			struct ufa_error *error;
-			bool created = ufa_util_mkdir(cfg_dir, &error);
-			if (!created) {
-				ufa_error_print_and_free_prefix(
-				    error, "Error creating base dir");
-				ret = -1;
-				goto end;
-			}
-		} else {
-			fprintf(stderr, "Base config dir does not exist: %s\n",
-				base_cfg_dir);
-			ret = -1;
-			goto end;
-		}
-	}
-
-	dirs_file = ufa_util_joinpath(cfg_dir, DIRS_FILE_NAME, NULL);
-	if (!ufa_util_isfile(dirs_file)) {
-		ufa_debug("Creating '%s'", dirs_file);
-		out = fopen(dirs_file, "w");
-		if (out == NULL) {
-			fprintf(stderr, "Could not open file: %s\n", dirs_file);
-			ret = -1;
-			goto end;
-		}
-		fprintf(out, DIRS_FILE_DEFAULT_STRING);
-	}
-
-	ret = 0;
-
-end:
-	if (out) {
-		fclose(out);
-	}
-	free(dirs_file);
-	free(cfg_dir);
-	return ret;
-}
 
 
 int main(int argc, char *argv[])
@@ -272,12 +229,12 @@ int main(int argc, char *argv[])
 	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
 	ufa_info("Config dir: %s\n", cfg_dir);
 
-	int ret = check_and_create_config_dir();
-	if (ret) {
-		exit(ret);
+	struct ufa_error *error = NULL;
+	struct ufa_list *list_dirs_config = ufa_config_dirs(true, &error);
+	if (error) {
+		ufa_error_print_and_free(error);
+		exit(-1);
 	}
-
-	struct ufa_list *list_dirs_config = ufa_config_dirs(true);
 
 	if (!ufa_monitor_init()) {
 		exit(-1);
