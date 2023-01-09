@@ -1,10 +1,19 @@
+# ========================================================================== #
+# Copyright (c) 2023 Henrique Teófilo                                        #
+# All rights reserved.                                                       #
+#                                                                            #
+# This file is part of UFA project.                                          #
+# For the terms of usage and distribution, please see COPYING file.          #
+# ========================================================================== #
+
 # Basic project settings
 cmake_minimum_required(VERSION 3.22)
 project(ufa C)
 set(CMAKE_C_STANDARD 99)
+add_compile_definitions(_GNU_SOURCE)
 
+# Modules for CMake
 include(FindPkgConfig)
-
 
 # Choosing directory of generated binaries
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
