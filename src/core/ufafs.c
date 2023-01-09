@@ -1,11 +1,13 @@
-/*
- * Copyright (c) 2021 Henrique Teófilo
- * All rights reserved.
- *
- * Implementation of UFAFS -- a FUSE file system.
- *
- * For the terms of usage and distribution, please see COPYING file.
- */
+/* ========================================================================== */
+/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* All rights reserved.                                                       */
+/*                                                                            */
+/* Implementation of UFAFS -- a FUSE file system.                             */
+/*                                                                            */
+/* This file is part of UFA Project.                                          */
+/* For the terms of usage and distribution, please see COPYING file.          */
+/* ========================================================================== */
+
 
 #define FUSE_USE_VERSION 31
 #include "core/repo.h"
@@ -15,7 +17,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -139,29 +140,29 @@ static int ufa_fuse_getattr(const char *path,
 {
 	ufa_debug("getattr: '%s'", path);
 
-	char *filepath = NULL;
+	char *f = NULL;
 	int res = 0;
 	memset(stbuf, 0, sizeof(struct stat));
 
-	/* ROOT DIR */
+	/* THE ROOT DIR */
 	if (ufa_str_equals(path, "/")) {
 		_copy_stat(stbuf, &stat_repository);
 
-		/* A FILE */
-	} else if ((filepath = ufa_repo_get_realfilepath(repo, path, NULL)) != NULL) {
-		ufa_debug(".copying stat from: '%s'", filepath);
+	/* A FILE */
+	} else if ((f = ufa_repo_get_realfilepath(repo, path, NULL)) != NULL) {
+		ufa_debug(".copying stat from: '%s'", f);
 		struct stat st;
-		stat(filepath, &st);
+		stat(f, &st);
 		_copy_stat(stbuf, &st);
 
-		/* ANOTHER TAG */
+	/* ANOTHER TAG */
 	} else if (ufa_repo_isatag(repo, path, NULL)) {
 		_copy_stat(stbuf, &stat_repository);
 	} else {
 		res = -ENOENT;
 	}
 
-	free(filepath);
+	free(f);
 	return res;
 }
 
@@ -292,7 +293,7 @@ int main(int argc, char *argv[])
 		_show_help(argv[0]);
 		fuse_opt_add_arg(&args, "--help");
 		args.argv[0][0] = '\0';
-        goto fuse;
+        	goto fuse;
 	}
 
 	if (options.repository == NULL) {
