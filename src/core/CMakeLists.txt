@@ -1,10 +1,23 @@
+# ========================================================================== #
+# Copyright (c) 2023 Henrique Teófilo                                        #
+# All rights reserved.                                                       #
+#                                                                            #
+# This file is part of UFA project.                                          #
+# For the terms of usage and distribution, please see COPYING file.          #
+# ========================================================================== #
+
+
+# Adding includes for third party libraries
 include_directories(${FUSE_INCLUDE_DIRS} ${SQLITE_INCLUDE_DIRS})
+
 
 add_library(ufa-core
         repo_sqlite.c
         data.c
         config.c
+        errors.h
         )
+
 target_link_libraries(ufa-core ${SQLITE_LDFLAGS} ufa-util)
 
 # Adding executable ufafs
