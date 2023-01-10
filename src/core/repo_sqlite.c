@@ -437,15 +437,14 @@ end:
 	return status;
 }
 
-static void _create_repo_indicator_file(char *repository)
+static void _create_repo_indicator_file(const char *repo)
 {
+	char *repository = ufa_util_abspath(repo);
 	char *filepath = ufa_util_joinpath(repository,
 					   REPOSITORY_INDICATOR_FILE_NAME,
 					   NULL);
-	if (ufa_util_isfile(filepath)) {
-		goto end;
-	}
-	ufa_debug("Writting %s file", filepath);
+
+	ufa_debug("Writting '%s' on file '%s'", repository, filepath);
 	FILE *fp = fopen(filepath, "w");
 	if (fp == NULL) {
 		fprintf(stderr, "error openning '%s': %s\n", filepath,
@@ -455,7 +454,8 @@ static void _create_repo_indicator_file(char *repository)
 	fprintf(fp, "%s", repository);
 	fclose(fp);
 end:
-	free(filepath);
+	ufa_free(repository);
+	ufa_free(filepath);
 }
 
 int _get_file_id(ufa_repo_t *repo, const char *filepath,
