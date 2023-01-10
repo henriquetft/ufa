@@ -214,7 +214,6 @@ static int handle_describe()
 
 int main(int argc, char *argv[])
 {
-	printf("oi\n");
 	program_name = argv[0];
 	global_args = argc;
 	global_argv = argv;
