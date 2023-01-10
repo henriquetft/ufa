@@ -60,7 +60,7 @@ handle_command_f handle_commands[] = {
     handle_clear, handle_list_all, handle_create,
 };
 
-static int validate_repository()
+static int get_and_validate_repository()
 {
 	if (repository == NULL) {
 		repository = ufa_util_get_current_dir();
@@ -232,7 +232,7 @@ static int handle_clear()
  */
 static int handle_list_all()
 {
-	int ret = validate_repository();
+	int ret = get_and_validate_repository();
 	if (ret != EX_OK) {
 		return ret;
 	}
@@ -262,7 +262,7 @@ static int handle_create()
 		return EX_USAGE;
 	}
 
-	int ret = validate_repository();
+	int ret = get_and_validate_repository();
 	if (ret != EX_OK) {
 		return ret;
 	}
@@ -302,8 +302,9 @@ int main(int argc, char *argv[])
 			exit_status = EX_OK;
 			goto end;
 		case 'h':
-			if (HAS_NEXT_ARG) {
-				exit_status = handle_help_command(NEXT_ARG, ARRAY_SIZE(commands));
+			if (HAS_PREV_ARGS(1)) {
+				exit_status = handle_help_command(
+				    PREV_ARG(1), ARRAY_SIZE(help_commands));
 			} else {
 				print_usage(stdout);
 				exit_status = EX_OK;
