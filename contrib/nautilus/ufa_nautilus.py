@@ -219,64 +219,59 @@ class UFACommand:
         list_tags = stdout.split('\n')[:-1]
         return list_tags
 
-    def get_tags_for_file(self, repo, filename):
+    def get_tags_for_file(self, repo, filepath):
         """ Executes ufatag list FILE """
         stdout = Commands.execute(
-            "{} -l off -r {} list {}".format(self.ufatag,
-                                      shlex.quote(repo),
-                                      shlex.quote(filename)))
+            "{} -l off list {}".format(self.ufatag,
+                                       shlex.quote(filepath)))
         list_tags = stdout.split('\n')[:-1]
         return list_tags
 
-    def set_tags_for_file(self, repo, filename, tag_list):
+    def set_tags_for_file(self, repo, filepath, tag_list):
         """ Executes ufatag set FILE tag """
         for tag in tag_list:
             Commands.execute(
-                "{} -l off -r {} set {} {}".format(self.ufatag,
-                                            shlex.quote(repo),
-                                            shlex.quote(filename),
-                                            tag))
+                "{} -l off set {} {}".format(self.ufatag,
+                                             shlex.quote(filepath),
+                                             tag))
 
-    def unset_tags_for_file(self, repo, filename, tag_list):
+    def unset_tags_for_file(self, repo, filepath, tag_list):
         """ Executes ufatag unset FILE tag """
         for tag in tag_list:
             Commands.execute(
-                "{} -l off -r {} unset {} {}".format(self.ufatag,
-                                              shlex.quote(repo),
-                                              shlex.quote(filename),
-                                              tag))
+                "{} -l off unset {} {}".format(self.ufatag,
+                                               shlex.quote(filepath),
+                                               tag))
 
     def create_tag(self, repo, tagname):
+        """ Executes ufatag create TAG """
         Commands.execute("{} -l off -r {} create {}".format(self.ufatag,
                                                      shlex.quote(repo),
                                                      tagname))
 
-    def get_attrs_for_file(self, repo, filename):
+    def get_attrs_for_file(self, repo, filepath):
         """ Executes ufaattr describe FILE """
         stdout = Commands.execute(
-            "{} -l off -r {} describe {}".format(self.ufaattr,
-                                          shlex.quote(repo),
-                                          shlex.quote(filename)))
+            "{} -l off describe {}".format(self.ufaattr,
+                                           shlex.quote(filepath)))
         list_attrs = stdout.split('\n')[:-1]
 
         return list_attrs
 
-    def get_attr_value_for_file(self, repo, filename, attribute):
+    def get_attr_value_for_file(self, repo, filepath, attribute):
         """ Executes ufaattr get FILE ATTRIBUTE """
         stdout = Commands.execute(
-            "{} -l off -r {} get {} {}".format(self.ufaattr,
-                                        shlex.quote(repo),
-                                        shlex.quote(filename),
-                                        attribute))
+            "{} -l off get {} {}".format(self.ufaattr,
+                                         shlex.quote(filepath),
+                                         attribute))
         return stdout.strip()
 
-    def set_attr_value_for_file(self, repo, filename, attr, value):
-        """ Executes ufaset FILE ATTR VALUE """
-        Commands.execute("{} -l off -r {} set {} {} {}".format(self.ufaattr,
-                                                        shlex.quote(repo),
-                                                        shlex.quote(filename),
-                                                        attr,
-                                                        value))
+    def set_attr_value_for_file(self, repo, filepath, attr, value):
+        """ Executes ufaattr set FILE ATTR VALUE """
+        Commands.execute("{} -l off set {} {} {}".format(self.ufaattr,
+                                                         shlex.quote(filepath),
+                                                         attr,
+                                                         value))
 
 
 class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
@@ -368,7 +363,7 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
             return None
         log(f"Repository path: {repo}")
         log(f"File path: {filepath}")
-        filename = filepath.split('/')[-1:][0]
+        #filename = filepath.split('/')[-1:][0]
 
         top_menuitem = Nautilus.MenuItem(name='MenuProvider::UFA',
                                          label='UFA',
@@ -399,15 +394,15 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
         sub_menuitem.connect('activate',
                              self.menu_activate_manage_tags,
                              repo,
-                             filename)
+                             filepath)
         sub_list_attr.connect('activate',
                               self.menu_activate_list_attrs,
                               repo,
-                              filename)
+                              filepath)
         sub_add_attr.connect('activate',
                              self.menu_activate_add_attrs,
                              repo,
-                             filename)
+                             filepath)
         log("Menu created\n")
         return (top_menuitem,)
 
