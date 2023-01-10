@@ -14,11 +14,11 @@
 #include <stdio.h>
 
 /* Helper macros for getopt */
-#define   HAS_NEXT_ARG             (optind < global_args)
-#define   HAS_MORE_ARGS(num)       (optind + num - 1 < global_args)
-#define   NEXT_ARG                 global_argv[optind++]
-#define   HAS_PREV_ARGS(num)       (optind - num - 2 < global_args)
-#define   PREV_ARG(num)            global_argv[optind - 2]
+#define   HAS_NEXT_ARG           (optind < global_args)
+#define   HAS_MORE_ARGS(num)     (optind + num - 1 < global_args)
+#define   NEXT_ARG               global_argv[optind++]
+#define   HAS_PREV_ARGS(num)     (optind - num - 2 < global_args && optind != 2)
+#define   PREV_ARG(num)          global_argv[optind - 2]
 
 #define   EXIT_COMMAND_NOT_FOUND   127
 

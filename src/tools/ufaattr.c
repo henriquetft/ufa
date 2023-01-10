@@ -231,8 +231,9 @@ int main(int argc, char *argv[])
 			exit_status = EX_OK;
 			goto end;
 		case 'h':
-			if (HAS_NEXT_ARG) {
-				exit_status = handle_help_command(NEXT_ARG, ARRAY_SIZE(help_commands));
+			if (HAS_PREV_ARGS(1)) {
+				exit_status = handle_help_command(
+				    PREV_ARG(1), ARRAY_SIZE(help_commands));
 			} else {
 				print_usage(stdout);
 				exit_status = EX_OK;
