@@ -9,6 +9,7 @@
 /* ========================================================================== */
 
 
+#include "core/data.h"
 #include "tools/cli.h"
 #include "core/config.h"
 #include "util/logging.h"
@@ -26,10 +27,12 @@ static void print_usage(FILE *stream);
 static int print_usage_add(FILE *stream);
 static int print_usage_remove(FILE *stream);
 static int print_usage_list(FILE *stream);
+static int print_usage_init(FILE *stream);
 
 static int handle_add();
 static int handle_remove();
 static int handle_list();
+static int handle_init();
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
@@ -40,17 +43,20 @@ char *commands[] = {
     "add",
     "remove",
     "list",
+    "init",
 };
 
 help_command_f help_commands[] = {
     print_usage_add,
     print_usage_remove,
     print_usage_list,
+    print_usage_init,
 };
 handle_command_f handle_commands[] = {
     handle_add,
     handle_remove,
     handle_list,
+    handle_init,
 };
 
 
@@ -72,6 +78,7 @@ static void print_usage(FILE *stream)
 		"  add\t\tAdd repository directory to watching list\n"
 		"  remove\tRemove repository directory from watching list\n"
 		"  list\t\tList current watched repositories\n"
+		"  init\t\tInitialize repository"
 		"\n"
 		"Run '%s COMMAND -h' for more information on a command.\n"
 		"\n",
@@ -102,6 +109,15 @@ static int print_usage_list(FILE *stream)
 	return EX_OK;
 }
 
+static int print_usage_init(FILE *stream)
+{
+	fprintf(stream, "\nUsage:  %s init REPOSITORY\n", program_name);
+	fprintf(stream, "\nCreate repository metadata when it does not exist)"
+			" \n\n");
+
+	return EX_OK;
+}
+
 
 
 static int handle_add()
@@ -125,6 +141,10 @@ static int handle_add()
 
 static int handle_remove()
 {
+	if (!HAS_MORE_ARGS(1)) {
+		print_usage_remove(stderr);
+		return EX_USAGE;
+	}
 	char *dir = NEXT_ARG;
 	struct ufa_error *error = NULL;
 	bool is_ok = ufa_config_remove_dir(dir, &error);
@@ -145,6 +165,20 @@ static int handle_list()
 		printf("%s\n", (char *) i->data);
 	}
 
+	ufa_error_print_and_free(error);
+
+	return error ? EXIT_FAILURE : EX_OK;
+}
+
+static int handle_init()
+{
+	if (!HAS_MORE_ARGS(1)) {
+		print_usage_init(stderr);
+		return EX_USAGE;
+	}
+	struct ufa_error *error = NULL;
+	char *dir = NEXT_ARG;
+	ufa_data_init_repo(dir, &error);
 	ufa_error_print_and_free(error);
 
 	return error ? EXIT_FAILURE : EX_OK;
