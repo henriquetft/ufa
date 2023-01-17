@@ -26,6 +26,11 @@
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
+
+
+#define DB_VERSION_ATTR "db_version"
+#define DB_VERSION_VALUE "1"
+
 // FIXME NOT NULL FOR ATTRIBUTE TABLE
 #define STR_CREATE_TABLE \
 "CREATE TABLE IF NOT EXISTS \"attribute\" ( \n"\
@@ -57,6 +62,10 @@
 "CREATE UNIQUE INDEX IF NOT EXISTS \"uniq_attr\" ON \"attribute\" (\n"\
 	"\"id_file\","\
 	"\"name\""\
+"); \n"\
+"CREATE TABLE IF NOT EXISTS \"ufa\" ( \n"\
+		"\"attr\"	TEXT PRIMARY KEY, \n"              \
+		"\"value\"	TEXT NOT NULL \n"\
 ");"
 
 #define REPOSITORY_FILENAME "repo.sqlite"
@@ -77,12 +86,14 @@ static char *ufa_repo_matchmode_sql[] = {"=", "LIKE"};
 
 //static struct ufa_repo *repo;
 
+static bool _insert_db_version(ufa_repo_t *repo);
+
 /* ========================================================================== */
 /* AUXILIARY FUNCTIONS                                                        */
 /* ========================================================================== */
 
-bool _db_prepare(ufa_repo_t *repo, sqlite3_stmt **stmt, char *sql, struct ufa_error **error,
-		 const char *func_name)
+bool _db_prepare(ufa_repo_t *repo, sqlite3_stmt **stmt, char *sql,
+		 struct ufa_error **error, const char *func_name)
 {
 	assert(repo != NULL);
 	int prepare_ret = sqlite3_prepare_v2(repo->db, sql, -1, stmt, NULL);
@@ -109,6 +120,25 @@ static bool _db_execute(ufa_repo_t *repo, sqlite3_stmt *stmt,
 	return status;
 }
 
+static void _db_begin(ufa_repo_t *repo)
+{
+	int status =
+	    sqlite3_exec(repo->db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+	if (status != SQLITE_OK) {
+		// FIXME log error message
+		ufa_debug("Failed to begin transaction\n");
+	}
+}
+
+static void _db_commit(ufa_repo_t *repo)
+{
+	int status = sqlite3_exec(repo->db, "COMMIT;", NULL, NULL, NULL);
+	if (status != SQLITE_OK) {
+		// FIXME log error message
+		ufa_debug("Failed to commit transaction\n");
+	}
+}
+
 /**
  * Returns a newly-allocated string with characters '?' separated by ','.
  * The number of characters '?' is equal to the number of elements in list.
@@ -124,10 +154,15 @@ static char *_sql_arg_list(struct ufa_list *list)
 	return sql_args;
 }
 
-/**
- * Attempts to establish a connection to sqlite repository.
- * Returns the ufa_repo_conn_t or NULL on error.
- */
+
+ /**
+  * Connect to sqlite db. Creates DB when file does not exist.
+  *
+  * @param file File path
+  * @param repo_path Repository path
+  * @param error Pointer to pointer to struct ufa_error
+  * @return struct ufa_repo reference
+  */
 static struct ufa_repo *_open_sqlite_conn(const char *file,
 					  const char *repo_path,
 					  struct ufa_error **error)
@@ -149,10 +184,14 @@ static struct ufa_repo *_open_sqlite_conn(const char *file,
 	/* if new file, create tables */
 	if (st.st_size == 0) {
 		ufa_debug("creating tables ...");
+		_db_begin(repo);
 		rc = sqlite3_exec(repo->db, STR_CREATE_TABLE, NULL, 0, &errmsg);
 		if (rc != SQLITE_OK) {
 			goto error_create_table;
 		}
+
+		_insert_db_version(repo);
+		_db_commit(repo);
 	}
 
 	repo->name = ufa_strdup(file);
@@ -341,6 +380,30 @@ end:
 	return id_tag;
 }
 
+static bool _insert_db_version(ufa_repo_t *repo)
+{
+	bool ret = false;
+
+	sqlite3_stmt *stmt = NULL;
+
+	char *sql_insert = "INSERT INTO ufa (attr, value) values(?,?)";
+	if (!db_prepare(repo, &stmt, sql_insert, NULL)) {
+		goto end;
+	}
+	sqlite3_bind_text(stmt, 1, DB_VERSION_ATTR, -1, NULL);
+	sqlite3_bind_text(stmt, 2, DB_VERSION_VALUE, -1, NULL);
+	int r = sqlite3_step(stmt);
+	if (r != SQLITE_DONE) {
+		fprintf(stderr, "sqlite error: %d\n", r);
+		goto end;
+	}
+	ret = true;
+end:
+	sqlite3_finalize(stmt);
+	return ret;
+
+}
+
 static int _insert_file(ufa_repo_t *repo, const char *filename,
 			struct ufa_error **error)
 {
@@ -437,7 +500,7 @@ end:
 	return status;
 }
 
-static void _create_repo_indicator_file(const char *repo)
+static void _create_repo_indicator_file(const char *repo, struct ufa_error **error)
 {
 	char *repository = ufa_util_abspath(repo);
 	char *filepath = ufa_util_joinpath(repository,
@@ -447,9 +510,10 @@ static void _create_repo_indicator_file(const char *repo)
 	ufa_debug("Writting '%s' on file '%s'", repository, filepath);
 	FILE *fp = fopen(filepath, "w");
 	if (fp == NULL) {
-		fprintf(stderr, "error openning '%s': %s\n", filepath,
-			strerror(errno));
-		abort();
+		ufa_error_new(error, UFA_ERROR_FILE,
+			      "error openning '%s': %s\n", filepath,
+			      strerror(errno));
+		goto end;
 	}
 	fprintf(fp, "%s", repository);
 	fclose(fp);
@@ -483,19 +547,24 @@ end:
 
 ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error)
 {
-	ufa_repo_t *repo;
-	if (!ufa_util_isdir(repository)) {
+	char *repo_abs = NULL;
+	ufa_repo_t *repo = NULL;
+
+	repo_abs = ufa_util_abspath(repository);
+	if (!ufa_util_isdir(repo_abs)) {
 		ufa_error_new(error, UFA_ERROR_NOTDIR, "error: %s is not a dir",
-			      repository);
+			      repo_abs);
 		return false;
 	}
 	char *filepath =
-	    ufa_util_joinpath(repository, REPOSITORY_FILENAME, NULL);
+	    ufa_util_joinpath(repo_abs, REPOSITORY_FILENAME, NULL);
 	ufa_debug("Initializing repo %s", filepath);
-	repo = _open_sqlite_conn(filepath, repository, error);
-	ufa_error_abort(*error);
-	_create_repo_indicator_file(repository);
-	free(filepath);
+	repo = _open_sqlite_conn(filepath, repo_abs, error);
+	if (repo != NULL) {
+		_create_repo_indicator_file(repo_abs, error);
+	}
+	ufa_free(repo_abs);
+	ufa_free(filepath);
 	return repo;
 }
 
