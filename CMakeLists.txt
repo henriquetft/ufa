@@ -15,6 +15,13 @@ add_compile_definitions(_GNU_SOURCE)
 # Modules for CMake
 include(FindPkgConfig)
 
+# Dir cmake for cmake modules
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# Finding check for unit test
+include(FindCheck)
+find_package(Check REQUIRED)
+
 # Choosing directory of generated binaries
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -29,7 +36,12 @@ find_package(Threads REQUIRED)
 # Root of include directories
 include_directories(src/)
 
+enable_testing()
+
 # Adding dir of ufa modules
 add_subdirectory(src/util)
 add_subdirectory(src/core)
 add_subdirectory(src/tools)
+add_subdirectory(tests)
+
+
