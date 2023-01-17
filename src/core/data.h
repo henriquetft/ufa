@@ -16,8 +16,9 @@
 #include "util/list.h"
 #include <stdbool.h>
 
-void ufa_data_close();
+bool ufa_data_init_repo(const char *repository, struct ufa_error **error);
 
+void ufa_data_close();
 
 struct ufa_list *ufa_data_listtags(const char *repodir,
 				   struct ufa_error **error);

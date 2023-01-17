@@ -56,7 +56,7 @@ static void init_repo_hashtable()
 static ufa_repo_t *get_repo(const char *repodir, struct ufa_error **error)
 {
 	if (!repodir) {
-		return NULL;
+		return NULL; // TODO is this correct ?
 	}
 	init_repo_hashtable();
 	ufa_repo_t *repo = (ufa_repo_t *) ufa_hashtable_get(repos, repodir);
@@ -80,6 +80,12 @@ static ufa_repo_t *get_repo_for(const char *filepath, struct ufa_error **error)
 /* ========================================================================== */
 /* FUNCTIONS FROM data.h                                                      */
 /* ========================================================================== */
+
+bool ufa_data_init_repo(const char *repository, struct ufa_error **error)
+{
+	ufa_repo_t *repo = get_repo(repository, error);
+	return repo != NULL;
+}
 
 void ufa_data_close()
 {
