@@ -82,6 +82,10 @@ char *ufa_util_config_dir(const char *appname);
 
 bool ufa_util_mkdir(const char *dir, struct ufa_error **error);
 
+bool ufa_util_rmdir(const char *dir, struct ufa_error **error);
+
+bool ufa_util_remove_file(const char *filepath, struct ufa_error **error);
+
 struct ufa_list *ufa_str_split(const char *str, const char *delim);
 
 int ufa_str_startswith(const char *str, const char *prefix);

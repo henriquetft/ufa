@@ -207,6 +207,26 @@ bool ufa_util_mkdir(const char *dir, struct ufa_error **error)
 	return false;
 }
 
+bool ufa_util_rmdir(const char *dir, struct ufa_error **error)
+{
+	if (rmdir(dir) == 0) {
+		return true;
+	}
+
+	ufa_error_new(error, errno, strerror(errno));
+	return false;
+}
+
+bool ufa_util_remove_file(const char *filepath, struct ufa_error **error)
+{
+	if (remove(filepath) == 0) {
+		return true;
+	}
+
+	ufa_error_new(error, errno, strerror(errno));
+	return false;
+}
+
 int ufa_str_equals(const char *str1, const char *str2)
 {
 	/* TODO write without strcmp */
