@@ -8,17 +8,25 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
 #include "tools/cli.h"
-#include "util/misc.h"
 #include "util/logging.h"
+#include "util/string.h"
 #include <stdio.h>
 #include <sysexits.h>
 
 
+/* ========================================================================== */
+/* VARIABLES AND DEFINITIONS                                                  */
+/* ========================================================================== */
+
 extern char *commands[];
-extern help_command_f help_commands[];
-extern handle_command_f handle_commands[];
+extern help_command_fn_t help_commands[];
+extern handle_command_fn_t handle_commands[];
+
+
+/* ========================================================================== */
+/* FUNCTIONS FROM cli.h                                                      */
+/* ========================================================================== */
 
 int handle_command(char *command, size_t num_commands)
 {

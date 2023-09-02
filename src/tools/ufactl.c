@@ -8,7 +8,6 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
 #include "core/data.h"
 #include "tools/cli.h"
 #include "core/config.h"
@@ -24,10 +23,10 @@
 /* ========================================================================== */
 
 static void print_usage(FILE *stream);
-static int print_usage_add(FILE *stream);
-static int print_usage_remove(FILE *stream);
-static int print_usage_list(FILE *stream);
-static int print_usage_init(FILE *stream);
+static void print_usage_add(FILE *stream);
+static void print_usage_remove(FILE *stream);
+static void print_usage_list(FILE *stream);
+static void print_usage_init(FILE *stream);
 
 static int handle_add();
 static int handle_remove();
@@ -46,13 +45,13 @@ char *commands[] = {
     "init",
 };
 
-help_command_f help_commands[] = {
+help_command_fn_t help_commands[] = {
     print_usage_add,
     print_usage_remove,
     print_usage_list,
     print_usage_init,
 };
-handle_command_f handle_commands[] = {
+handle_command_fn_t handle_commands[] = {
     handle_add,
     handle_remove,
     handle_list,
@@ -85,37 +84,29 @@ static void print_usage(FILE *stream)
 		program_name);
 }
 
-static int print_usage_add(FILE *stream)
+static void print_usage_add(FILE *stream)
 {
 	fprintf(stream, "\nUsage:  %s add REPOSITORY \n", program_name);
 	fprintf(stream, "\nAdd repository directory to watching list\n\n");
-
-	return EX_OK;
 }
 
-static int print_usage_remove(FILE *stream)
+static void print_usage_remove(FILE *stream)
 {
 	fprintf(stream, "\nUsage:  %s remove REPOSITORY\n", program_name);
 	fprintf(stream, "\nRemove repository directory from watching list\n\n");
-
-	return EX_OK;
 }
 
-static int print_usage_list(FILE *stream)
+static void print_usage_list(FILE *stream)
 {
 	fprintf(stream, "\nUsage:  %s list\n", program_name);
 	fprintf(stream, "\nList current watched repositories\n\n");
-
-	return EX_OK;
 }
 
-static int print_usage_init(FILE *stream)
+static void print_usage_init(FILE *stream)
 {
-	fprintf(stream, "\nUsage:  %s init REPOSITORY\n", program_name);
-	fprintf(stream, "\nCreate repository metadata when it does not exist)"
+	fprintf(stream, "\nUsage:  %s init REPOSITORY_PATH\n", program_name);
+	fprintf(stream, "\nCreate repository metadata when it does not exist"
 			" \n\n");
-
-	return EX_OK;
 }
 
 
@@ -133,7 +124,9 @@ static int handle_add()
 	ufa_error_print_and_free(error);
 
 	if (is_ok) {
-		printf("Added %s\n", dir);
+		char *abspath = ufa_util_abspath(dir);
+		printf("Added %s\n", abspath);
+		ufa_free(abspath);
 		return EX_OK;
 	}
 	return EXIT_FAILURE;
@@ -166,7 +159,7 @@ static int handle_list()
 	}
 
 	ufa_error_print_and_free(error);
-
+	ufa_list_free(list);
 	return error ? EXIT_FAILURE : EX_OK;
 }
 
@@ -184,8 +177,43 @@ static int handle_init()
 	return error ? EXIT_FAILURE : EX_OK;
 }
 
+//#include "core/jsonrpc_server.h"
+//#include "util/hashtable.h"
+//#include "core/jsonrpc_parser.h"
+
 int main(int argc, char *argv[])
 {
+
+
+//	char *str2 = "{ "
+//		    "  \"params\" : {  \"teste\" : 123,  \"filepath\" : \"oi.txt\", \"tag\" : \"unix\", \"outro\" : \"ok\", \"tags\" : [ 1, 2.9, \"asfasdf\" ]   },\n"
+//		    "\"jsonrpc\" : \"2.0\",\n"
+//		    "  \"method\" : \"settag\",\n"
+//		    "  \"id\" : \"1\"\n"
+//
+//		    "}";
+//
+//
+//	char *stra = "{"
+//		    " \"params\" : { \"a\" : 1 } "
+//		   "   \"jsonrpc\": \"2.0\","
+//		   "   \"method\": \"listtags\""
+//		   "}";
+//
+//	char *str = "{ "
+//		    "\"jsonrpc\" : \"2.0\",\n"
+//		    "  \"id\" : \"1\",\n"
+//		    "  \"method\" : \"settag\",\n"
+//		    "  \"params\" : { \"filepath\" : \"fileA\", \"attr\" : "
+//		    "\"unix\", \"size\" : 543, \"enabled\" : true, \"items\" : [ "
+//		    "1, 2.9, \"test str\", false, null ]   }\n"
+//		    "}";
+////	struct ufa_jsonrpc *rpc = NULL;
+////	ufa_jsonrpc_parse(str, &rpc);
+//
+//	int fd = 0;
+//	ufa_jsonrpc_server(&fd);
+//	if(1==1) return 0;
 	program_name = argv[0];
 	global_args = argc;
 	global_argv = argv;

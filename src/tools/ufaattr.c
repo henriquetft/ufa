@@ -8,13 +8,13 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
-#include "tools/cli.h"
 #include "core/repo.h"
-#include "core/data.h"
+#include "tools/cli.h"
 #include "util/list.h"
 #include "util/logging.h"
 #include "util/misc.h"
+#include "util/string.h"
+#include "json/jsonrpc_api.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sysexits.h>
@@ -47,14 +47,16 @@ char *commands[] = {
     "list", "describe",
 };
 
-help_command_f help_commands[] = {
-    print_usage_set,  print_usage_unset, print_usage_get,
+help_command_fn_t help_commands[] = {
+    print_usage_set,  print_usage_unset,    print_usage_get,
     print_usage_list, print_usage_describe,
 };
-handle_command_f handle_commands[] = {
+handle_command_fn_t handle_commands[] = {
     handle_set, handle_unset, handle_get,
     handle_list, handle_describe,
 };
+
+static ufa_jsonrpc_api_t *api = NULL;
 
 /* ========================================================================== */
 /* IMPLEMENTATION                                                             */
@@ -119,12 +121,13 @@ static int handle_set()
 		return EX_USAGE;
 	}
 
-	char *file = NEXT_ARG;
+	char filepath[PATH_MAX];
+	ufa_util_abspath2(NEXT_ARG, filepath);
 	char *attr = NEXT_ARG;
 	char *value = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_data_setattr(file, attr, value, &error);
+	bool is_ok = ufa_jsonrpc_api_setattr(api, filepath, attr, value, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -136,11 +139,12 @@ static int handle_unset()
 		return EX_USAGE;
 	}
 
-	char *file = NEXT_ARG;
+	char filepath[PATH_MAX];
+	ufa_util_abspath2(NEXT_ARG, filepath);
 	char *attr = NEXT_ARG;
 
 	struct ufa_error *error = NULL;
-	bool is_ok = ufa_data_unsetattr(file, attr, &error);
+	bool is_ok = ufa_jsonrpc_api_unsetattr(api, filepath, attr, &error);
 	ufa_error_print_and_free(error);
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
@@ -152,22 +156,26 @@ static int handle_get()
 		return EX_USAGE;
 	}
 
-	char *file = NEXT_ARG;
+	char filepath[PATH_MAX];
+	ufa_util_abspath2(NEXT_ARG, filepath);
+
 	char *attr = NEXT_ARG;
 
 	bool found = false;
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_data_getattr(file, &error);
+	struct ufa_list *list_attrs = ufa_jsonrpc_api_getattr(api,
+							      filepath,
+							      &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
-		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
+		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *) i->data;
 		if (ufa_str_equals(attr_i->attribute, attr)) {
 			printf("%s\n", attr_i->value);
 			found = true;
 		}
 	}
-	ufa_list_free_full(list_attrs, ufa_repo_attrfree);
+	ufa_list_free_full(list_attrs, (ufa_list_free_fn_t) ufa_repo_attr_free);
 	return (!error && found) ? EX_OK : EXIT_FAILURE;
 }
 
@@ -178,15 +186,18 @@ static int handle_list()
 		return EX_USAGE;
 	}
 
-	char *file = NEXT_ARG;
+	char filepath[PATH_MAX];
+	ufa_util_abspath2(NEXT_ARG, filepath);
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_data_getattr(file, &error);
+	struct ufa_list *list_attrs = ufa_jsonrpc_api_getattr(api,
+							      filepath,
+							      &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
-		printf("%s\n", ((struct ufa_repo_attr *)i->data)->attribute);
+		printf("%s\n", ((struct ufa_repo_attr *) i->data)->attribute);
 	}
-	ufa_list_free_full(list_attrs, ufa_repo_attrfree);
+	ufa_list_free_full(list_attrs, (ufa_list_free_fn_t) ufa_repo_attr_free);
 	return !error ? EX_OK : EXIT_FAILURE;
 }
 
@@ -197,17 +208,20 @@ static int handle_describe()
 		return EX_USAGE;
 	}
 
-	char *file = NEXT_ARG;
+	char filepath[PATH_MAX];
+	ufa_util_abspath2(NEXT_ARG, filepath);
 
 	struct ufa_error *error = NULL;
-	struct ufa_list *list_attrs = ufa_data_getattr(file, &error);
+	struct ufa_list *list_attrs = ufa_jsonrpc_api_getattr(api,
+							      filepath,
+							      &error);
 	ufa_error_print_and_free(error);
 	for (UFA_LIST_EACH(i, list_attrs)) {
-		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *)i->data;
+		struct ufa_repo_attr *attr_i = (struct ufa_repo_attr *) i->data;
 		printf("%s\t%s\n", (char *) attr_i->attribute,
 		       (char *) attr_i->value);
 	}
-	ufa_list_free_full(list_attrs, ufa_repo_attrfree);
+	ufa_list_free_full(list_attrs, (ufa_list_free_fn_t) ufa_repo_attr_free);
 	return !error ? EX_OK : EXIT_FAILURE;
 }
 
@@ -271,10 +285,14 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	char *command = NEXT_ARG;
+	// Start JSON RPC API
+	struct ufa_error *err_api = NULL;
+	api = ufa_jsonrpc_api_init(&err_api);
+	ufa_error_exit(err_api, EX_UNAVAILABLE);
 
+	char *command = NEXT_ARG;
 	exit_status = handle_command(command, ARRAY_SIZE(commands));
 end:
-	ufa_data_close();
+	ufa_jsonrpc_api_close(api, NULL);
 	return exit_status;
 }
