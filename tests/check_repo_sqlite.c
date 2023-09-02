@@ -11,6 +11,7 @@
 #include "core/repo.h"
 #include "util/error.h"
 #include "util/misc.h"
+#include "util/string.h"
 #include "core/errors.h"
 #include <check.h>
 #include <stdio.h>
@@ -18,38 +19,62 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
 static ufa_repo_t *global_repo = NULL;
 
-const char *TMP_REPO_DIR = "./tmp";
-const char *TMP_REPO_FILE = "./tmp/repo.sqlite";
-const char *TMP_UFAREPOFILE = "./tmp/.ufarepo";
-const char *TMP_TEST_FILE = "./tmp/test_file";
+char TMP_REPO_DIR[] = "/tmp/ufa-test-XXXXXX";
+char *TMP_REPO_FILE = NULL;
+char *TMP_UFAREPOFILE = NULL;
+char *TMP_TEST_FILE1 = NULL;
+
 
 const char *TAG1 = "tag1";
 const char *TAG2 = "tag2";
 const char *TAG3 = "tag3";
 
+#define ASSERT_STR_IN_LIST(str, list)                                          \
+	ck_assert(ufa_list_contains(                                           \
+	    list, str, (ufa_list_equal_fn_t) ufa_str_equals))
+
 /* ========================================================================== */
 /* AUXILIARY FUNCTIONS                                                        */
 /* ========================================================================== */
 
+static void create_file(const char *file)
+{
+	int fd = open(file, O_RDWR | O_CREAT);
+	if (fd != -1) {
+		close(fd);
+	}
+}
+
 static void init_files_repo_tmp()
 {
-	ufa_util_mkdir(TMP_REPO_DIR, NULL);
+	mkdtemp(TMP_REPO_DIR);
 
+	TMP_REPO_FILE   = ufa_util_joinpath(TMP_REPO_DIR, "repo.sqlite", NULL);
+	TMP_UFAREPOFILE = ufa_util_joinpath(TMP_REPO_DIR, ".ufarepo", NULL);
+	TMP_TEST_FILE1  = ufa_util_joinpath(TMP_REPO_DIR, "testfile1", NULL);
+
+	create_file(TMP_TEST_FILE1);
+
+	printf("Repo dir.........: %s\n", TMP_REPO_DIR);
+	printf("Test file 1......: %s\n", TMP_TEST_FILE1);
 }
 
 static void remove_files_repo_tmp()
 {
 	ufa_util_remove_file(TMP_REPO_FILE, NULL);
 	ufa_util_remove_file(TMP_UFAREPOFILE, NULL);
-	ufa_util_remove_file(TMP_TEST_FILE, NULL);
+	ufa_util_remove_file(TMP_TEST_FILE1, NULL);
 	ufa_util_rmdir(TMP_REPO_DIR, NULL);
+
+	ufa_free(TMP_REPO_FILE);
+	ufa_free(TMP_UFAREPOFILE);
+	ufa_free(TMP_TEST_FILE1);
 }
 
 static void insert_test_tags()
@@ -93,6 +118,8 @@ START_TEST(init_error_notdir)
 	ck_assert(error != NULL);
 	ck_assert(error->code == UFA_ERROR_NOTDIR);
 
+	ufa_error_print_and_free(error);
+
 }
 END_TEST
 
@@ -103,7 +130,10 @@ START_TEST(init_error_create_db)
 	ufa_repo_t *repo = ufa_repo_init("/root", &error);
 	//printf("%d %s\n", error->code, error->message);
 	ck_assert(repo == NULL);
+	ck_assert(error != NULL);
 	ck_assert(error->code == UFA_ERROR_DATABASE);
+
+	ufa_error_print_and_free(error);
 
 }
 END_TEST
@@ -128,7 +158,6 @@ START_TEST(init_ok)
 }
 END_TEST
 
-
 /* ========================================================================== */
 /* TEST FUNCTIONS FOR tag management                                          */
 /* ========================================================================== */
@@ -151,42 +180,100 @@ START_TEST(listtags_ok)
 	ck_assert(list != NULL && error == NULL);
 
 	struct ufa_list *tag1 = ufa_list_find_by_data(
-	    list, TAG1, (bool (*)(void *, void *))ufa_str_equals);
+	    list, TAG1, (ufa_list_equal_fn_t) ufa_str_equals);
 
 	struct ufa_list *tag2 = ufa_list_find_by_data(
-	    list, TAG2, (bool (*)(void *, void *))ufa_str_equals);
+	    list, TAG2, (ufa_list_equal_fn_t) ufa_str_equals);
 
 	struct ufa_list *tag3 = ufa_list_find_by_data(
-	    list, TAG3, (bool (*)(void *, void *))ufa_str_equals);
+	    list, TAG3, (ufa_list_equal_fn_t) ufa_str_equals);
 
 	ck_assert(tag1 != NULL);
 	ck_assert(tag2 != NULL);
 	ck_assert(tag3 != NULL);
 	ck_assert(tag1 != tag2 && tag2 != tag3 && tag1 != tag3);
+
+	ufa_list_free(list);
 }
 END_TEST
 
 
-START_TEST(settag_ok)
+START_TEST(listfiles_ok)
 {
-	// we must create the file first
-	const char *filepath = TMP_TEST_FILE;
-	int fd = open(TMP_TEST_FILE, O_RDWR | O_CREAT);
-	ck_assert(fd != -1);
-	close(fd);
+	insert_test_tags();
 
 	struct ufa_error *error = NULL;
-	bool ret = ufa_repo_settag(global_repo, filepath, TAG1, &error);
+
+	ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG1, &error);
+	ufa_error_print_and_free(error);
+	ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG2, &error);
+	ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG3, &error);
+
+	char *filename = ufa_util_getfilename(TMP_TEST_FILE1);
+
+	// Testing "/"
+	struct ufa_list *list_root = ufa_repo_listfiles(global_repo,
+							"/",
+							&error);
+	ASSERT_STR_IN_LIST(TAG1, list_root);
+	ASSERT_STR_IN_LIST(TAG2, list_root);
+	ASSERT_STR_IN_LIST(TAG3, list_root);
+	ASSERT_STR_IN_LIST(".ufarepo", list_root);
+	ck_assert_int_eq(4, ufa_list_size(list_root));
+
+	// Testing "/TAG1"
+	char *path_tag1 = ufa_str_sprintf("/%s", TAG1);
+	struct ufa_list *list1 = ufa_repo_listfiles(global_repo,
+						    path_tag1,
+						    &error);
+	ASSERT_STR_IN_LIST(TAG2, list1);
+	ASSERT_STR_IN_LIST(TAG3, list1);
+	ASSERT_STR_IN_LIST(".ufarepo", list1);
+	ASSERT_STR_IN_LIST(filename, list1);
+	ck_assert_int_eq(4, ufa_list_size(list1));
+
+	// Testing "/TAG1/TAG2"
+	char *path_tag1_2 = ufa_str_sprintf("/%s/%s", TAG1, TAG2);
+	struct ufa_list *list2 = ufa_repo_listfiles(global_repo,
+						    path_tag1_2,
+						    &error);
+	ASSERT_STR_IN_LIST(TAG3, list2);
+	ASSERT_STR_IN_LIST(".ufarepo", list2);
+	ASSERT_STR_IN_LIST(filename, list2);
+	ck_assert_int_eq(3, ufa_list_size(list2));
+
+	// Testing "/TAG1/TAG2/TAG3"
+	char *path_tag1_2_3 = ufa_str_sprintf("/%s/%s/%s", TAG1, TAG2, TAG3);
+	struct ufa_list *list3 = ufa_repo_listfiles(global_repo,
+						    path_tag1_2_3,
+						    &error);
+	ASSERT_STR_IN_LIST(".ufarepo", list3);
+	ASSERT_STR_IN_LIST(filename, list3);
+	ck_assert_int_eq(2, ufa_list_size(list3));
+
+
+	ufa_free(filename);
+	ufa_list_free(list_root);
+	ufa_list_free(list2);
+	ufa_list_free(list3);
+}
+END_TEST
+
+START_TEST(settag_ok)
+{
+	struct ufa_error *error = NULL;
+	bool ret = ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG1, &error);
 	ck_assert_msg(error == NULL, "%s", error->message);
 	ck_assert(ret);
 
 	struct ufa_list *list = NULL;
-	ret = ufa_repo_gettags(global_repo, filepath, &list, &error);
+	ret = ufa_repo_gettags(global_repo, TMP_TEST_FILE1, &list, &error);
 	ck_assert_msg(error == NULL, "%s", error->message);
 	ck_assert(ret);
 	ck_assert(list != NULL);
 	ck_assert(ufa_list_size(list) == 1);
 	ck_assert(ufa_str_equals(list->data, TAG1));
+	ufa_list_free(list);
 }
 END_TEST
 
@@ -199,8 +286,10 @@ START_TEST(getrepopath_ok)
 {
 	char *abs_tmp_repo_dir = ufa_util_abspath(TMP_REPO_DIR);
 	char *repo_path = ufa_repo_getrepopath(global_repo);
-	ck_assert_msg(ufa_str_equals(repo_path, abs_tmp_repo_dir), "%s != %s",
-		      repo_path, TMP_REPO_DIR);
+	ck_assert_msg(ufa_str_equals(repo_path, abs_tmp_repo_dir),
+		      "%s != %s",
+		      repo_path,
+		      TMP_REPO_DIR);
 	ufa_free(repo_path);
 	ufa_free(abs_tmp_repo_dir);
 }
@@ -239,14 +328,15 @@ Suite *repo_suite(void)
 	tcase_add_test(tc_tag, listtags_ok);
 	tcase_add_test(tc_tag, listtags_empty);
 	tcase_add_test(tc_tag, settag_ok);
+	tcase_add_test(tc_tag, listfiles_ok);
 
+	// FIXME test gettags
 
 	/* Tag management case */
 	tc_getrepopath = tcase_create("getrepopath");
 	tcase_add_checked_fixture(tc_getrepopath, setup_repo, teardown_repo);
 	tcase_add_test(tc_getrepopath, getrepopath_ok);
 	tcase_add_test(tc_getrepopath, getrepopath_null);
-
 
 	/* Add test cases to suite */
 	suite_add_tcase(s, tc_init);
