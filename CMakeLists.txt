@@ -1,16 +1,22 @@
-# ========================================================================== #
-# Copyright (c) 2023 Henrique Teófilo                                        #
-# All rights reserved.                                                       #
-#                                                                            #
-# This file is part of UFA project.                                          #
-# For the terms of usage and distribution, please see COPYING file.          #
-# ========================================================================== #
+# ============================================================================ #
+# Copyright (c) 2023 Henrique Teófilo                                          #
+# All rights reserved.                                                         #
+#                                                                              #
+# This file is part of UFA project.                                            #
+# For the terms of usage and distribution, please see COPYING file.            #
+# ============================================================================ #
 
 # Basic project settings
 cmake_minimum_required(VERSION 3.22)
 project(ufa C)
 set(CMAKE_C_STANDARD 99)
 add_compile_definitions(_GNU_SOURCE)
+add_compile_definitions(JSMN_STATIC)
+
+
+# Set up CTest
+set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full")
+include(CTest)
 
 # Modules for CMake
 include(FindPkgConfig)
@@ -42,6 +48,7 @@ enable_testing()
 add_subdirectory(src/util)
 add_subdirectory(src/core)
 add_subdirectory(src/tools)
+add_subdirectory(src/json)
 add_subdirectory(tests)
 
 
