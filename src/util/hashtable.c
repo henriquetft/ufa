@@ -8,77 +8,65 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
 #include "util/list.h"
+#include "util/misc.h"
 #include "hashtable.h"
 #include "logging.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
+/* ========================================================================== */
+/* VARIABLES AND DEFINITIONS                                                  */
+/* ========================================================================== */
+
 /* Mapping function that unsets MSB (to prevent negatives) */
 #define MAP(hashcode, size) ((hashcode & 0x7FFFFFFF) % size)
 
-static struct node {
+struct node {
 	void *key;
 	void *value;
+	ufa_hash_free_fn_t freekey;
+	ufa_hash_free_fn_t freevalue;
 	struct node *next;
 };
 
 struct ufa_hashtable {
-	struct node **buckets;  /* array */
-	int bucket_size;	/* array size */
-	int num_elements;       /* number of elements stored */
-	ufa_hash_func_t func;   /* function to get hash code from keys */
+	struct node **buckets;  /* Array */
+	int bucket_size;	/* Array size */
+	int num_elements;       /* Number of elements stored */
+	ufa_hash_fn_t func;     /* Function to get hash code from keys */
 
-	ufa_hash_equal_func_t eqfunc;
-	ufa_hash_free_func_t freekeys;
-	ufa_hash_free_func_t freevalues;
+	ufa_hash_equal_fn_t eqfunc;
+	ufa_hash_free_fn_t freekeys;
+	ufa_hash_free_fn_t freevalues;
 
 	float loadfactor;
 	int threshold;
 };
 
+
+/* ========================================================================== */
+/* AUXILIARY FUNCTIONS - DECLARATION                                          */
+/* ========================================================================== */
+
 static void find_node(ufa_hashtable_t *table, const void *key,
-		      struct node **node, struct node **prev, int *bucket)
-{
-	int h = table->func(key);
-	int map = MAP(h, table->bucket_size);
-	struct node *n = table->buckets[map];
+		      struct node **node, struct node **prev, int *bucket);
 
-	struct node *iter = NULL;
-	struct node *p = NULL;
-	for (; n != NULL; n = n->next) {
-		if (table->eqfunc(key, n->key)) {
-			iter = n;
-			break;
-		}
-		p = n;
-	}
+/* ========================================================================== */
+/* FUNCTIONS FROM hashtable.h                                                 */
+/* ========================================================================== */
 
-	if (bucket != NULL) {
-		*bucket = map;
-	}
-
-	if (node != NULL) {
-		*node = iter;
-	}
-
-	if (prev != NULL) {
-		*prev = p;
-	}
-}
-
-ufa_hashtable_t *ufa_hashtable_new_full(ufa_hash_func_t hfunc,
-					ufa_hash_equal_func_t eqfunc,
-					ufa_hash_free_func_t freek,
-					ufa_hash_free_func_t freev,
+ufa_hashtable_t *ufa_hashtable_new_full(ufa_hash_fn_t hfunc,
+					ufa_hash_equal_fn_t eqfunc,
+					ufa_hash_free_fn_t freek,
+					ufa_hash_free_fn_t freev,
 					int bucket_size,
 					float loadfactor)
 {
-	ufa_hashtable_t *table = malloc(sizeof *table);
+	ufa_hashtable_t *table = ufa_malloc(sizeof *table);
 	table->bucket_size = bucket_size;
-	table->buckets = calloc(sizeof(struct node *), table->bucket_size);
+	table->buckets = ufa_calloc(sizeof(struct node *), table->bucket_size);
 	table->num_elements = 0;
 
 	table->func = hfunc;
@@ -92,10 +80,10 @@ ufa_hashtable_t *ufa_hashtable_new_full(ufa_hash_func_t hfunc,
 	return table;
 }
 
-ufa_hashtable_t *ufa_hashtable_new(ufa_hash_func_t hfunc,
-				   ufa_hash_equal_func_t eqfunc,
-				   ufa_hash_free_func_t freek,
-				   ufa_hash_free_func_t freev)
+ufa_hashtable_t *ufa_hashtable_new(ufa_hash_fn_t hfunc,
+				   ufa_hash_equal_fn_t eqfunc,
+				   ufa_hash_free_fn_t freek,
+				   ufa_hash_free_fn_t freev)
 {
 	return ufa_hashtable_new_full(hfunc, eqfunc, freek, freev,
 				      UFA_HASH_DEFAULT_ARRAY_SIZE,
@@ -104,31 +92,43 @@ ufa_hashtable_t *ufa_hashtable_new(ufa_hash_func_t hfunc,
 
 bool ufa_hashtable_put(ufa_hashtable_t *table, void *key, void *value)
 {
+	return ufa_hashtable_put_full(table, key, value, table->freekeys,
+				      table->freevalues);
+}
+
+bool ufa_hashtable_put_full(ufa_hashtable_t *table,
+			    void *key,
+			    void *value,
+			    ufa_hash_free_fn_t freek, ufa_hash_free_fn_t freev)
+{
 	struct node *node = NULL;
 	int map = -1;
 	bool ret;
 	/* check whether a key exists */
 	find_node(table, key, &node, NULL, &map);
-
 	if (node != NULL) {
-		if (table->freevalues) {
-			table->freevalues(node->value);
+		if (node->freevalue) {
+			node->freevalue(node->value);
 		}
 
-		if (table->freekeys) {
-			table->freekeys(node->key);
+		if (node->freekey) {
+			node->freekey(node->key);
 		}
 		node->key = key;
 		node->value = value;
+		node->freekey = freek;
+		node->freevalue = freev;
 		ret = false;
 	} else {
 		/* adding */
 		assert(map >= 0 && map < table->bucket_size);
-		node = malloc(sizeof *node);
+		node = ufa_malloc(sizeof *node);
 		node->key = key;
 		node->value = value;
 		node->next = table->buckets[map];
 		table->buckets[map] = node;
+		node->freekey = freek;
+		node->freevalue = freev;
 
 		table->num_elements++;
 
@@ -176,13 +176,13 @@ bool ufa_hashtable_remove(ufa_hashtable_t *table, const void *key)
 			prev->next = to_del->next;
 		}
 
-		if (table->freekeys) {
-			table->freekeys(to_del->key);
+		if (to_del->freekey) {
+			to_del->freekey(to_del->key);
 		}
-		if (table->freevalues) {
-			table->freevalues(to_del->value);
+		if (to_del->freevalue) {
+			to_del->freevalue(to_del->value);
 		}
-		free(to_del);
+		ufa_free(to_del);
 		table->num_elements--;
 	}
 
@@ -195,7 +195,7 @@ int ufa_hashtable_size(ufa_hashtable_t *table)
 }
 
 /* the data structure cannot be modified while iterating with this function */
-void ufa_hashtable_foreach(ufa_hashtable_t *table, ufa_hash_foreach_func_t func,
+void ufa_hashtable_foreach(ufa_hashtable_t *table, ufa_hash_foreach_fn_t func,
 			   void *user_data)
 {
 	int x;
@@ -216,13 +216,13 @@ void ufa_hashtable_clear(ufa_hashtable_t *table)
 		while (node != NULL) {
 			struct node *to_del = node;
 			node = node->next;
-			if (table->freekeys) {
-				table->freekeys(to_del->key);
+			if (to_del->freekey) {
+				to_del->freekey(to_del->key);
 			}
-			if (table->freevalues) {
-				table->freevalues(to_del->value);
+			if (to_del->freevalue) {
+				to_del->freevalue(to_del->value);
 			}
-			free(to_del);
+			ufa_free(to_del);
 		}
 		table->buckets[x] = NULL;
 	}
@@ -235,7 +235,7 @@ void ufa_hashtable_rehash(ufa_hashtable_t *table)
 	int old_size = table->bucket_size;
 	int new_size = old_size * 2;
 
-	struct node **buckets = calloc(sizeof(struct node *), new_size);
+	struct node **buckets = ufa_calloc(sizeof(struct node *), new_size);
 	table->bucket_size = new_size;
 	table->num_elements = 0;
 	table->buckets = buckets;
@@ -245,13 +245,14 @@ void ufa_hashtable_rehash(ufa_hashtable_t *table)
 		struct node *node = old_buckets[x];
 		while (node != NULL) {
 			/* TODO if put call rehash again ? */
-			ufa_hashtable_put(table, node->key, node->value);
+			ufa_hashtable_put_full(table, node->key, node->value,
+					       node->freekey, node->freevalue);
 			struct node *old = node;
 			node = node->next;
-			free(old);
+			ufa_free(old);
 		}
 	}
-	free(old_buckets);
+	ufa_free(old_buckets);
 }
 
 struct ufa_list *ufa_hashtable_keys(ufa_hashtable_t *table)
@@ -260,10 +261,11 @@ struct ufa_list *ufa_hashtable_keys(ufa_hashtable_t *table)
 	for (int x = 0; x < table->bucket_size; x++) {
 		struct node *node = table->buckets[x];
 		while (node != NULL) {
-			keys = ufa_list_append(keys, node->key);
+			keys = ufa_list_prepend(keys, node->key);
 			node = node->next;
 		}
 	}
+	keys = ufa_list_reverse(keys);
 	return keys;
 }
 
@@ -275,10 +277,11 @@ struct ufa_list *ufa_hashtable_values(ufa_hashtable_t *table)
 	for (int x = 0; x < table->bucket_size; x++) {
 		struct node *node = table->buckets[x];
 		while (node != NULL) {
-			values = ufa_list_append(values, node->value);
+			values = ufa_list_prepend(values, node->value);
 			node = node->next;
 		}
 	}
+	values = ufa_list_reverse(values);
 	return values;
 }
 
@@ -289,5 +292,40 @@ void ufa_hashtable_free(ufa_hashtable_t *table)
 		ufa_hashtable_clear(table);
 		free(table->buckets);
 		free(table);
+	}
+}
+
+
+/* ========================================================================== */
+/* AUXILIARY FUNCTIONS                                                        */
+/* ========================================================================== */
+
+static void find_node(ufa_hashtable_t *table, const void *key,
+		      struct node **node, struct node **prev, int *bucket)
+{
+	int h = table->func(key);
+	int map = MAP(h, table->bucket_size);
+	struct node *n = table->buckets[map];
+
+	struct node *iter = NULL;
+	struct node *p = NULL;
+	for (; n != NULL; n = n->next) {
+		if (table->eqfunc(key, n->key)) {
+			iter = n;
+			break;
+		}
+		p = n;
+	}
+
+	if (bucket != NULL) {
+		*bucket = map;
+	}
+
+	if (node != NULL) {
+		*node = iter;
+	}
+
+	if (prev != NULL) {
+		*prev = p;
 	}
 }

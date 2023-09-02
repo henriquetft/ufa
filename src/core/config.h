@@ -8,13 +8,11 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
 #ifndef UFA_CONFIG_H_
 #define UFA_CONFIG_H_
 
 #include "util/error.h"
 #include <stdbool.h>
-
 
 #define CONFIG_DIR_NAME             "ufa"
 #define DIRS_FILE_NAME              "dirs"
@@ -22,12 +20,13 @@
 
 
 /**
- * Read config file (DIRS_FILE_NAME) and getsall valid (existing)
+ * Read config file (DIRS_FILE_NAME) and get all valid (existing)
  * directories listed.
  *
  * @param reload Reload from file or use the last result
  * @param error pointer to pointer to error structure
- * @return List of dirs in DIRS_FILE_NAME
+ * @return A newly-allocated list of dirs in DIRS_FILE_NAME
+ * (should be freed using ufa_list_free)
  */
 struct ufa_list *ufa_config_dirs(bool reload, struct ufa_error **error);
 

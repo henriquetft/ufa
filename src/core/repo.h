@@ -8,7 +8,6 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
 #ifndef UFA_REPO_H_
 #define UFA_REPO_H_
 
@@ -18,14 +17,14 @@
 #include <stdbool.h>
 
 
+/* List of supported match modes */
+typedef struct ufa_repo ufa_repo_t;
+
 enum ufa_repo_matchmode {
-	UFA_REPO_EQUAL = 0, // =
-	UFA_REPO_WILDCARD,  // ~=
+	UFA_REPO_EQUAL = 0,       // =
+	UFA_REPO_WILDCARD,        // ~= (accept *)
 	UFA_REPO_MATCHMODE_TOTAL,
 };
-
-/* List of supported match modes */
-extern const enum ufa_repo_matchmode ufa_repo_matchmode_supported[];
 
 struct ufa_repo_filterattr {
 	char *attribute;
@@ -38,7 +37,7 @@ struct ufa_repo_attr {
 	char *value;
 };
 
-typedef struct ufa_repo ufa_repo_t;
+extern const enum ufa_repo_matchmode ufa_repo_matchmode_supported[];
 
 
 ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error);
@@ -92,16 +91,34 @@ bool ufa_repo_unsetattr(ufa_repo_t *repo,
 			const char *attribute,
 			struct ufa_error **error);
 
-// returns list of ufa_repo_attr_t
+
+/**
+ *
+ * @param repo
+ * @param filepath
+ * @param error
+ * @return List of struct ufa_repo_attr
+ */
 struct ufa_list *ufa_repo_getattr(ufa_repo_t *repo,
 				  const char *filepath,
 				  struct ufa_error **error);
 
-bool ufa_repo_isatag(ufa_repo_t *repo, const char *path,
+/**
+ * Checks whether a path is a tag.
+ * E.g.: /tag1/tag2/tag3 or /tag1/tag2/file.
+ *
+ * @param repo
+ * @param path
+ * @param error
+ * @return
+ */
+bool ufa_repo_isatag(ufa_repo_t *repo,
+		     const char *path,
 		     struct ufa_error **error);
 
 // FIXME
-char *ufa_repo_get_realfilepath(ufa_repo_t *repo, const char *path,
+char *ufa_repo_get_realfilepath(ufa_repo_t *repo,
+				const char *path,
 				struct ufa_error **error);
 
 struct ufa_repo_filterattr *
@@ -111,18 +128,23 @@ ufa_repo_filterattr_new(const char *attribute,
 
 void ufa_repo_filterattr_free(struct ufa_repo_filterattr *filter);
 
-void ufa_repo_attrfree(struct ufa_repo_attr *attr);
+
+void ufa_repo_attr_free(struct ufa_repo_attr *attr);
 
 char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error);
 
 void ufa_repo_free(ufa_repo_t *repo);
 
+
 bool ufa_repo_isrepo(char *directory);
 
-bool ufa_repo_removefile(ufa_repo_t *repo, char *filepath,
+bool ufa_repo_removefile(ufa_repo_t *repo,
+			 const char *filepath,
 			 struct ufa_error **error);
 
-bool ufa_repo_renamefile(ufa_repo_t *repo, char *oldfilepath, char *newfilepath,
+bool ufa_repo_renamefile(ufa_repo_t *repo,
+			 const char *oldfilepath,
+			 const char *newfilepath,
 			 struct ufa_error **error);
 
 #endif /* UFA_REPO_H_ */

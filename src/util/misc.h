@@ -8,14 +8,14 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
-#ifndef MISC_H_
-#define MISC_H_
+#ifndef UFA_MISC_H_
+#define UFA_MISC_H_
 
 #include "list.h"
 #include "error.h"
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 
 #define UFA_FILE_SEPARATOR "/"
@@ -29,6 +29,11 @@
  * Return val when expr is false
  */
 #define   ufa_return_val_ifnot(expr, val) if (!(expr)) { return val; }
+
+/**
+ * Return val when expr is true
+ */
+#define   ufa_return_val_if(expr, val) if (expr) { return val; }
 
 /**
  * Return (with no value) when expr is false
@@ -52,7 +57,6 @@
 #define   UFA_ARRAY_EACH(i, arr) size_t i = 0; i < ARRAY_SIZE(arr); i++
 
 
-
 char *ufa_util_joinpath(const char *first_element, ...);
 
 /**
@@ -66,9 +70,8 @@ char *ufa_util_dirname(const char *filepath);
 
 char *ufa_util_abspath(const char *path);
 
-char *ufa_util_strcat(const char *str1, const char *str2);
+void *ufa_util_abspath2(const char *path, char *dest_buf);
 
-int ufa_str_equals(const char *str1, const char *str2);
 
 int ufa_util_isdir(const char *filename);
 
@@ -86,32 +89,19 @@ bool ufa_util_rmdir(const char *dir, struct ufa_error **error);
 
 bool ufa_util_remove_file(const char *filepath, struct ufa_error **error);
 
-struct ufa_list *ufa_str_split(const char *str, const char *delim);
+void *ufa_malloc(size_t size);
 
-int ufa_str_startswith(const char *str, const char *prefix);
+void *ufa_calloc(size_t nmemb, size_t size);
 
-int ufa_str_endswith(const char *str, const char *suffix);
-
-char *ufa_strdup(const char *str);
-
-char *ufa_str_multiply(const char *str, int times);
-
-int ufa_str_count(const char *str, const char *part);
-
-char *ufa_str_vprintf(char const *format, va_list ap);
-
-char *ufa_str_sprintf(char const *format, ...);
-
-void ufa_str_replace(char *str, char old, char new);
-
-char *ufa_str_ltrim(char *s);
-
-char *ufa_str_rtrim(char *s);
-
-char *ufa_str_trim(char *s);
-
-int ufa_str_hash(const char *str);
+void *ufa_realloc(void *ptr, size_t size);
 
 void ufa_free(void *p);
 
-#endif /* MISC_H_ */
+bool *ufa_bool_dup(bool i);
+
+double *ufa_double_dup(double number);
+
+long *ufa_long_dup(long number);
+
+
+#endif /* UFA_MISC_H_ */

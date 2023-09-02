@@ -8,7 +8,6 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
 #ifndef UFA_DATA_H_
 #define UFA_DATA_H_
 
@@ -23,8 +22,6 @@ void ufa_data_close();
 struct ufa_list *ufa_data_listtags(const char *repodir,
 				   struct ufa_error **error);
 
-struct ufa_list *ufa_data_listfiles(const char *dirpath,
-				    struct ufa_error **error);
 
 bool ufa_data_gettags(const char *filepath,
 		      struct ufa_list **list,
@@ -61,13 +58,14 @@ bool ufa_data_unsetattr(const char *filepath,
 			const char *attribute,
 			struct ufa_error **error);
 
-// returns list of ufa_repo_attr_t
+// return list of ufa_repo_attr_t
 struct ufa_list *ufa_data_getattr(const char *filepath,
 				  struct ufa_error **error);
 
-bool ufa_data_removefile(char *filepath, struct ufa_error **error);
+bool ufa_data_removefile(const char *filepath, struct ufa_error **error);
 
-bool ufa_data_renamefile(char *oldfilepath, char *newfilepath,
+bool ufa_data_renamefile(const char *oldfilepath,
+			 const char *newfilepath,
 			 struct ufa_error **error);
 
 #endif /* UFA_DATA_H_ */

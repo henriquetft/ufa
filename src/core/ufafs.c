@@ -8,12 +8,12 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
-
 #define FUSE_USE_VERSION 31
 #include "core/repo.h"
 #include "util/list.h"
 #include "util/logging.h"
 #include "util/misc.h"
+#include "util/string.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
@@ -23,6 +23,45 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+/* ========================================================================== */
+/* VARIABLES AND DEFINITIONS                                                  */
+/* ========================================================================== */
+
+/** Command-line options data */
+static struct options {
+	const char *repository;
+	char *log_level;
+	int show_help;
+} options;
+
+#define OPTION(t, p)                                                           \
+	{                                                                      \
+		t, offsetof(struct options, p), 1                              \
+	}
+
+/** File attributes about repository path */
+static struct stat stat_repository;
+
+static ufa_repo_t *repo;
+
+/** Command-line options */
+static const struct fuse_opt option_spec[] = {
+    OPTION("--repository=%s", repository),
+    OPTION("-h", show_help),
+    OPTION("--log=%s", log_level),
+    OPTION("-l %s", log_level),
+    OPTION("--help", show_help),
+    FUSE_OPT_END
+};
+
+/* ========================================================================== */
+/* AUXILIARY FUNCTIONS - DECLARATION                                          */
+/* ========================================================================== */
+
+static void show_help(const char *progname);
+static void copy_stat(struct stat *dest, struct stat *src);
+
 
 /* ========================================================================== */
 /* FUSE FUNCTIONS -- DECLARATION                                              */
@@ -63,66 +102,6 @@ static const struct fuse_operations ufa_fuse_oper = {
 	.mkdir = ufa_fuse_mkdir,
 };
 
-/* ========================================================================== */
-/* VARIABLES AND DEFINITIONS                                                  */
-/* ========================================================================== */
-
-/** Command-line options data */
-static struct options {
-	const char *repository;
-	char *log_level;
-	int show_help;
-} options;
-
-#define OPTION(t, p)                                                           \
-	{                                                                      \
-		t, offsetof(struct options, p), 1                              \
-	}
-
-/** File attributes about repository path */
-static struct stat stat_repository;
-
-static ufa_repo_t *repo;
-
-/** Command-line options */
-static const struct fuse_opt option_spec[] = {
-    OPTION("--repository=%s", repository),
-    OPTION("-h", show_help),
-    OPTION("--log=%s", log_level),
-    OPTION("-l %s", log_level),
-    OPTION("--help", show_help),
-    FUSE_OPT_END
-};
-
-/* ========================================================================== */
-/* AUXILIARY FUNCTIONS                                                        */
-/* ========================================================================== */
-
-static void _show_help(const char *progname)
-{
-	printf("usage: %s [options] <mountpoint>\n\n", progname);
-	printf("File-system specific options:\n"
-	       "    --repository=<s>          Folder containing files and "
-	       "metadata\n"
-	       "\n");
-}
-
-static void _copy_stat(struct stat *dest, struct stat *src)
-{
-	dest->st_dev = src->st_dev;
-	dest->st_ino = src->st_ino;
-	dest->st_mode = src->st_mode;
-	dest->st_nlink = src->st_nlink;
-	dest->st_uid = src->st_uid;
-	dest->st_gid = src->st_gid;
-	dest->st_rdev = src->st_rdev;
-	dest->st_size = src->st_size;
-	dest->st_atime = src->st_atime;
-	dest->st_blksize = src->st_blksize;
-	dest->st_blocks = src->st_blocks;
-	dest->st_ctime = src->st_ctime;
-	dest->st_mtime = src->st_mtime;
-}
 
 /* ========================================================================== */
 /* FUSE FUNCTIONS -- IMPLEMENTATION                                           */
@@ -146,18 +125,18 @@ static int ufa_fuse_getattr(const char *path,
 
 	/* THE ROOT DIR */
 	if (ufa_str_equals(path, "/")) {
-		_copy_stat(stbuf, &stat_repository);
+		copy_stat(stbuf, &stat_repository);
 
 	/* A FILE */
 	} else if ((f = ufa_repo_get_realfilepath(repo, path, NULL)) != NULL) {
 		ufa_debug(".copying stat from: '%s'", f);
 		struct stat st;
 		stat(f, &st);
-		_copy_stat(stbuf, &st);
+		copy_stat(stbuf, &st);
 
 	/* ANOTHER TAG */
 	} else if (ufa_repo_isatag(repo, path, NULL)) {
-		_copy_stat(stbuf, &stat_repository);
+		copy_stat(stbuf, &stat_repository);
 	} else {
 		res = -ENOENT;
 	}
@@ -183,9 +162,9 @@ static int ufa_fuse_readdir(const char *path,
 	struct ufa_list *list = ufa_repo_listfiles(repo, path, &error);
 	ufa_error_abort(error);
 
-	for (UFA_LIST_EACH(iter, list)) {
-		ufa_debug("...listing '%s'", (char *)iter->data);
-		int r = filler(buf, iter->data, NULL, 0, 0);
+	for (UFA_LIST_EACH(i, list)) {
+		ufa_debug("...listing '%s'", (char *) i->data);
+		int r = filler(buf, i->data, NULL, 0, 0);
 		if (r != 0) {
 			res = -ENOMEM;
 			break;
@@ -193,7 +172,7 @@ static int ufa_fuse_readdir(const char *path,
 	}
 
 	if (list) {
-		ufa_list_free_full(list, free);
+		ufa_list_free(list);
 	} else {
 		res = -ENOENT;
 	}
@@ -237,7 +216,8 @@ static int ufa_fuse_read(const char *path,
 		close(f);
 		return res;
 	} else {
-		ufa_warn("Error openning file '%s': %s", filepath,
+		ufa_warn("Error openning file '%s': %s",
+			 filepath,
 			 strerror(errno));
 		return -ENOENT;
 	}
@@ -290,7 +270,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (options.show_help) {
-		_show_help(argv[0]);
+		show_help(argv[0]);
 		fuse_opt_add_arg(&args, "--help");
 		args.argv[0][0] = '\0';
         	goto fuse;
@@ -329,4 +309,36 @@ fuse:
     	fuse_opt_free_args(&args);
 
 	return ret;
+}
+
+
+/* ========================================================================== */
+/* AUXILIARY FUNCTIONS                                                        */
+/* ========================================================================== */
+
+
+static void show_help(const char *progname)
+{
+	printf("usage: %s [options] <mountpoint>\n\n", progname);
+	printf("File-system specific options:\n"
+	       "    --repository=<s>          Folder containing files and "
+	       "metadata\n"
+	       "\n");
+}
+
+static void copy_stat(struct stat *dest, struct stat *src)
+{
+	dest->st_dev = src->st_dev;
+	dest->st_ino = src->st_ino;
+	dest->st_mode = src->st_mode;
+	dest->st_nlink = src->st_nlink;
+	dest->st_uid = src->st_uid;
+	dest->st_gid = src->st_gid;
+	dest->st_rdev = src->st_rdev;
+	dest->st_size = src->st_size;
+	dest->st_atime = src->st_atime;
+	dest->st_blksize = src->st_blksize;
+	dest->st_blocks = src->st_blocks;
+	dest->st_ctime = src->st_ctime;
+	dest->st_mtime = src->st_mtime;
 }
