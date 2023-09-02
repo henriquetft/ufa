@@ -119,6 +119,7 @@ class Commands:
                     raise Exception("Error on {}. return code: {}".format(
                         command, proc.returncode))
                 stdout = stdout.decode('utf-8')
+                stdout = stdout.strip()
                 log(f'\nCommand return stdout:\n{stdout}')
                 log(f'\nCommand returncode:\n{proc.returncode}')
                 if returncode:
@@ -137,7 +138,7 @@ class Commands:
                                   --checklist \
                                   --column 'Pick' --column 'Tags' \
                                   --title 'Choose tags for this file' \
-                                  --width=300 --height=350 {} \
+                                  --width=350 --height=400 {} \
                                   --separator=':'""".format(cls.ZENITY, shlex.quote(filename),
                                                             tags_param),
                                   exp=[0, 1], returncode=True)
@@ -194,11 +195,12 @@ class Commands:
         attrs_str = " ".join(["\"" + str(x[0]).strip() + '" "'
                               + str(x[1]).strip() + "\"" for x in attrs])
         stdout = cls.execute("""{} --list \
+                              --width=400 --height=500 \
                               --title="Choose the attribute to edit" \
                               --column="Attribute" --column="Value" \
                               {}""".format(cls.ZENITY, attrs_str), exp=[0, 1])
-        # remove last '\n'
-        return "".join(stdout.split('\n')[:-1])
+
+        return "".join(stdout.split('\n'))
 
 
 class UFACommand:
@@ -215,8 +217,8 @@ class UFACommand:
     def get_all_tags(self, repo):
         """ Executes ufatag list-all """
         stdout = Commands.execute(
-            "{} -l off -r {} list-all".format(self.ufatag, repo))
-        list_tags = stdout.split('\n')[:-1]
+            "{} -l off -r {} list-all".format(self.ufatag, shlex.quote(repo)))
+        list_tags = stdout.split('\n')
         return list_tags
 
     def get_tags_for_file(self, repo, filepath):
@@ -224,7 +226,7 @@ class UFACommand:
         stdout = Commands.execute(
             "{} -l off list {}".format(self.ufatag,
                                        shlex.quote(filepath)))
-        list_tags = stdout.split('\n')[:-1]
+        list_tags = stdout.split('\n')
         return list_tags
 
     def set_tags_for_file(self, repo, filepath, tag_list):
@@ -233,7 +235,7 @@ class UFACommand:
             Commands.execute(
                 "{} -l off set {} {}".format(self.ufatag,
                                              shlex.quote(filepath),
-                                             tag))
+                                             shlex.quote(tag)))
 
     def unset_tags_for_file(self, repo, filepath, tag_list):
         """ Executes ufatag unset FILE tag """
@@ -241,20 +243,20 @@ class UFACommand:
             Commands.execute(
                 "{} -l off unset {} {}".format(self.ufatag,
                                                shlex.quote(filepath),
-                                               tag))
+                                               shlex.quote(tag)))
 
     def create_tag(self, repo, tagname):
         """ Executes ufatag create TAG """
         Commands.execute("{} -l off -r {} create {}".format(self.ufatag,
                                                      shlex.quote(repo),
-                                                     tagname))
+                                                     shlex.quote(tagname)))
 
     def get_attrs_for_file(self, repo, filepath):
         """ Executes ufaattr describe FILE """
         stdout = Commands.execute(
             "{} -l off describe {}".format(self.ufaattr,
                                            shlex.quote(filepath)))
-        list_attrs = stdout.split('\n')[:-1]
+        list_attrs = stdout.split('\n')
 
         return list_attrs
 
@@ -263,15 +265,15 @@ class UFACommand:
         stdout = Commands.execute(
             "{} -l off get {} {}".format(self.ufaattr,
                                          shlex.quote(filepath),
-                                         attribute))
+                                         shlex.quote(attribute)))
         return stdout.strip()
 
     def set_attr_value_for_file(self, repo, filepath, attr, value):
         """ Executes ufaattr set FILE ATTR VALUE """
         Commands.execute("{} -l off set {} {} {}".format(self.ufaattr,
                                                          shlex.quote(filepath),
-                                                         attr,
-                                                         value))
+                                                         shlex.quote(attr),
+                                                         shlex.quote(value)))
 
 
 class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
@@ -315,6 +317,7 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
         arg = list(map(lambda x: tuple(x.split('\t')), ret))
         # choose an attribute to edit
         attr_to_edit = Commands.dialog_list_attrs(filename, arg)
+        log(f"Attr do edit '{attr_to_edit}' (file '{filename}'")
         if attr_to_edit:
             attr_value = self.cmd.get_attr_value_for_file(repo, filename, attr_to_edit)
             new_value = Commands.dialog_edit_attr(filename, attr_to_edit, attr_value)
