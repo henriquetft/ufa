@@ -5,3 +5,9 @@ BreakBeforeBraces: Linux
 AllowShortIfStatementsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: false
 IndentCaseLabels: false
+AlignAfterOpenBracket: Align
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+AlwaysBreakBeforeMultilineStrings: false
+BreakStringLiterals: true
+SpaceAfterCStyleCast: true
