@@ -60,7 +60,6 @@ static pthread_t events_loop_thread;
 
 static void close_and_free_state();
 static bool is_started();
-static int *int_dup(int i);
 static bool int_equals(int *a, int *b);
 static int int_hash(int *i);
 static uint32_t *uint32_dup(uint32_t i);
@@ -148,9 +147,8 @@ bool ufa_monitor_stop()
 	}
 
 	ufa_debug("Waiting for event loop thread to terminate");
-	//pthread_join(events_loop_thread, NULL);
-	sem_wait(&end_reading);
 
+	sem_wait(&end_reading);
 	sem_destroy(&end_reading);
 
 	assert(!VALID_FD(efd));
@@ -192,9 +190,10 @@ int ufa_monitor_add_watcher(const char *filepath,
 	}
 
 	ufa_debug("Watching %d -- %s", wd, filepath);
-	ufa_hashtable_put(table, int_dup(wd), ufa_str_dup(filepath));
-	ufa_hashtable_put(callbacks, int_dup(wd), callback);
-	ufa_hashtable_put(table_filename, ufa_str_dup(filepath), int_dup(wd));
+	ufa_hashtable_put(table, ufa_int_dup(wd), ufa_str_dup(filepath));
+	ufa_hashtable_put(callbacks, ufa_int_dup(wd), callback);
+	ufa_hashtable_put(table_filename, ufa_str_dup(filepath),
+			  ufa_int_dup(wd));
 end:
 	return wd;
 
@@ -287,14 +286,6 @@ static bool is_started()
 	assert(VALID_FD(inotify));
 	assert(buffered_events != NULL);
 	return true;
-}
-
-
-static int *int_dup(int i)
-{
-	int *n = ufa_malloc(sizeof(int));
-	*n = i;
-	return n;
 }
 
 static bool int_equals(int *a, int *b)
@@ -391,14 +382,14 @@ static void print_event(const struct inotify_event *event)
 {
 	char str[500] = "";
 	mask_to_str(event->mask, str);
-	printf("\n------------------------------------\n");
-	printf ("wd=%d mask=%u cookie=%u len=%u\n mask_str=%s\n",
+	ufa_debug("\n------------------------------------");
+	ufa_debug("wd=%d mask=%u cookie=%u len=%u\n mask_str=%s",
 	       event->wd, event->mask,
 	       event->cookie, event->len, str);
 	if (event->len) {
-		printf ("name=%s\n", event->name);
+		ufa_debug("name=%s", event->name);
 	}
-	printf("------------------------------------\n");
+	ufa_debug("------------------------------------");
 }
 
 
