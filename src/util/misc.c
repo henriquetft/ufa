@@ -103,7 +103,7 @@ int ufa_util_isfile(const char *filename)
 char *ufa_util_get_current_dir()
 {
 	char cwd[PATH_MAX];
-	if (getcwd(cwd, sizeof(cwd)) != NULL) {
+	if (getcwd(cwd, PATH_MAX-1) != NULL) {
 		return ufa_str_dup(cwd);
 	} else {
 		perror("getcwd() error");
@@ -215,6 +215,89 @@ long *ufa_long_dup(long number)
 	return n;
 }
 
+int *ufa_intptr_dup(int *i)
+{
+	if (i == NULL) {
+		return NULL;
+	}
+	int *n = ufa_malloc(sizeof(int));
+	*n = *i;
+	return n;
+}
+
+int *ufa_int_dup(int i)
+{
+	int *n = ufa_malloc(sizeof(int));
+	*n = i;
+	return n;
+}
+
+
+char *ufa_util_resolvepath(const char *filename)
+{
+	const size_t MAX_SIZE = PATH_MAX;
+
+	char *buf;
+	char *new = buf = ufa_malloc(MAX_SIZE * sizeof(char));
+	new[0] = '\0';
+
+	char *path = filename;
+
+	if (*path != '/') {
+		char *s = ufa_util_get_current_dir();
+		strncat(new, s, MAX_SIZE-1);
+	}
+
+	bool stop = false;
+	//strlen(new) + count_chars >= MAX_SIZE-1
+	while (!stop && *path != '\0') {
+
+		if (*path == '/') {
+			path++;
+			continue;
+		}
+
+		if (*path == '.') {
+			if (path[1] == '\0' || path[1] == '/') {
+				path++;
+				continue;
+			}
+			// ".."
+			if (path[1] == '.') {
+				if (path[2] == '\0' || path[2] == '/') {
+					path += 2;
+					if (strlen(new) == 0) {
+						continue;
+					}
+
+					char *n = new + strlen(new);
+					while (*(--n) != '/');
+					*n = '\0';
+					continue;
+				}
+			}
+		}
+
+		int count_chars = 0;
+		char *n = new + strlen(new);
+		while (*(path+count_chars) != '\0' && *(path+count_chars) != '/') {
+			stop = strlen(new) + count_chars >= MAX_SIZE-1;
+			if (stop) {
+				break;
+			}
+			count_chars++;
+		}
+
+		if (!stop) {
+			n[0] = '/';
+			memcpy(n + 1, path, count_chars);
+			n[count_chars + 1] = '\0';
+			path += count_chars;
+		}
+	}
+	return buf;
+}
+
 
 /* ========================================================================== */
 /* AUXILIARY FUNCTIONS                                                        */
@@ -246,3 +329,4 @@ static char *join_path(const char *delim, const char *first_element,
 	}
 	return buf;
 }
+

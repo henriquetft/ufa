@@ -103,5 +103,10 @@ double *ufa_double_dup(double number);
 
 long *ufa_long_dup(long number);
 
+int *ufa_intptr_dup(int *i);
+
+int *ufa_int_dup(int i);
+
+char *ufa_util_resolvepath(const char *dir);
 
 #endif /* UFA_MISC_H_ */
