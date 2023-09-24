@@ -136,9 +136,10 @@ end:
 
 bool ufa_config_remove_dir(const char *dir, struct ufa_error **error)
 {
+	ufa_debug("Removing dir '%s'", dir);
+
 	char *dirs_file = NULL;
 	bool ret = false;
-	char *normdir = NULL;
 	struct ufa_list *dirs = NULL;
 
 	pthread_mutex_lock(&global_mutex);
@@ -149,13 +150,11 @@ bool ufa_config_remove_dir(const char *dir, struct ufa_error **error)
 	dirs_file = get_config_dirs_filepath();
 	ufa_info("Reading config file %s", dirs_file);
 
-	normdir = ufa_util_abspath(dir);
-
 	struct ufa_list *element = ufa_list_find_by_data(
-	    dirs, normdir, (ufa_list_equal_fn_t) ufa_str_equals);
+	    dirs, dir, (ufa_list_equal_fn_t) ufa_str_equals);
 
 	if (element == NULL) {
-		ufa_debug("Dir '%s' was not in the list\n", normdir);
+		ufa_debug("Dir '%s' was not in the list\n", dir);
 		ret = true;
 		goto end;
 	}
@@ -169,7 +168,6 @@ bool ufa_config_remove_dir(const char *dir, struct ufa_error **error)
 	ret = true;
 end:
 	pthread_mutex_unlock(&global_mutex);
-	ufa_free(normdir);
 	ufa_free(dirs_file);
 	return ret;
 }

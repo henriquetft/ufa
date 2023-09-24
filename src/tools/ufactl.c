@@ -134,20 +134,28 @@ static int handle_add()
 
 static int handle_remove()
 {
+	int ret;
+
 	if (!HAS_MORE_ARGS(1)) {
 		print_usage_remove(stderr);
 		return EX_USAGE;
 	}
 	char *dir = NEXT_ARG;
+	char *dirpath = ufa_util_resolvepath(dir);
+
 	struct ufa_error *error = NULL;
 	bool is_ok = ufa_config_remove_dir(dir, &error);
 	ufa_error_print_and_free(error);
 
 	if (is_ok) {
-		printf("Removed %s\n", dir);
+		ret = EX_OK;
+		printf("Removed %s\n", dirpath);
 		return EX_OK;
+	} else {
+		ret = EXIT_FAILURE;
 	}
-	return EXIT_FAILURE;
+	ufa_free(dirpath);
+	return ret;
 }
 
 static int handle_list()
@@ -177,43 +185,9 @@ static int handle_init()
 	return error ? EXIT_FAILURE : EX_OK;
 }
 
-//#include "core/jsonrpc_server.h"
-//#include "util/hashtable.h"
-//#include "core/jsonrpc_parser.h"
 
 int main(int argc, char *argv[])
 {
-
-
-//	char *str2 = "{ "
-//		    "  \"params\" : {  \"teste\" : 123,  \"filepath\" : \"oi.txt\", \"tag\" : \"unix\", \"outro\" : \"ok\", \"tags\" : [ 1, 2.9, \"asfasdf\" ]   },\n"
-//		    "\"jsonrpc\" : \"2.0\",\n"
-//		    "  \"method\" : \"settag\",\n"
-//		    "  \"id\" : \"1\"\n"
-//
-//		    "}";
-//
-//
-//	char *stra = "{"
-//		    " \"params\" : { \"a\" : 1 } "
-//		   "   \"jsonrpc\": \"2.0\","
-//		   "   \"method\": \"listtags\""
-//		   "}";
-//
-//	char *str = "{ "
-//		    "\"jsonrpc\" : \"2.0\",\n"
-//		    "  \"id\" : \"1\",\n"
-//		    "  \"method\" : \"settag\",\n"
-//		    "  \"params\" : { \"filepath\" : \"fileA\", \"attr\" : "
-//		    "\"unix\", \"size\" : 543, \"enabled\" : true, \"items\" : [ "
-//		    "1, 2.9, \"test str\", false, null ]   }\n"
-//		    "}";
-////	struct ufa_jsonrpc *rpc = NULL;
-////	ufa_jsonrpc_parse(str, &rpc);
-//
-//	int fd = 0;
-//	ufa_jsonrpc_server(&fd);
-//	if(1==1) return 0;
 	program_name = argv[0];
 	global_args = argc;
 	global_argv = argv;
