@@ -54,7 +54,7 @@ char *ufa_str_trim(char *s);
 int ufa_str_hash(const char *str);
 
 bool ufa_str_to_double(const char *str, double *number);
-\
+
 bool ufa_str_to_long(const char *str, long *number);
 
 
