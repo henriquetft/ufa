@@ -11,8 +11,9 @@ cmake_minimum_required(VERSION 3.22)
 project(ufa C)
 set(CMAKE_C_STANDARD 99)
 add_compile_definitions(_GNU_SOURCE)
-add_compile_definitions(JSMN_STATIC)
 
+# Definition for JSMN
+add_compile_definitions(JSMN_STATIC)
 
 # Set up CTest
 set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full")
