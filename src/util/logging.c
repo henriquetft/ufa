@@ -19,7 +19,9 @@
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
-static int loglevel = UFA_LOG_DEBUG;
+static FILE *global_file = NULL;
+
+static int loglevel = UFA_LOG_OFF;
 static bool log_to_syslog = false;
 
 #define IS_VALID_LOG_LEVEL(level) (level >= UFA_LOG_DEBUG \
@@ -98,6 +100,14 @@ void ufa_log_use_syslog()
 	openlog("UFA", LOG_PID | LOG_CONS, LOG_USER);
 	log_to_syslog = true;
 }
+
+void ufa_log_use_file(FILE *file_log)
+{
+	global_file = file_log;
+	log_to_syslog = false;
+}
+
+
 static void log_syslog(enum ufa_log_level level, const char *format, va_list ap)
 {
 	vsyslog(log_level_attr[level].syslog_priority, format, ap);
@@ -198,22 +208,27 @@ static void write_log(enum ufa_log_level level, const char *format, va_list ap)
 
 static void log_file(enum ufa_log_level level, const char *format, va_list ap)
 {
+	if (global_file == NULL) {
+		global_file = stdout;
+	}
+
+	FILE *file = global_file;
+
 	static int is_a_tty = -1;
 	if (is_a_tty == -1) {
-		is_a_tty = isatty(STDOUT_FILENO);
+		is_a_tty = isatty(fileno(file));
 	}
 
 	/* man 3 stdarg */
-	FILE *file = stdout;
 	if (is_a_tty) {
-		fprintf(stdout, "%s", log_level_attr[level].color);
+		fprintf(file, "%s", log_level_attr[level].color);
 	}
 	fprintf(file, "%s", ufa_log_level_to_str(level));
 	vfprintf(file, format, ap);
 	fprintf(file, "\n");
 
 	if (is_a_tty) {
-		printf("\033[0;0m");
+		fprintf(file, "\033[0;0m");
 	}
 
 	fflush(file);

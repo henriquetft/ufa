@@ -44,6 +44,8 @@ enum ufa_log_level ufa_log_getlevel();
 
 void ufa_log_use_syslog();
 
+void ufa_log_use_file(FILE *file_log);
+
 bool ufa_log_is_logging(enum ufa_log_level level);
 
 #endif /* LOGGING_H_ */
