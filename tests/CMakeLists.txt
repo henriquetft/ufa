@@ -13,6 +13,9 @@ include_directories(${CHECK_INCLUDE_DIRS})
 add_executable(check_string check_string.c)
 target_link_libraries(check_string ufa-util ${CHECK_LIBRARIES} Threads::Threads)
 
+add_executable(check_misc check_misc.c)
+target_link_libraries(check_misc ufa-util ${CHECK_LIBRARIES} Threads::Threads)
+
 add_executable(check_list check_list.c)
 target_link_libraries(check_list ufa-util ${CHECK_LIBRARIES} Threads::Threads)
 
@@ -34,6 +37,7 @@ target_link_libraries(check_jsonrpc_api ufa-jsonrpc-api ufa-jsonrpc-server ${CHE
 
 # These tests will be run by CTest
 add_test(NAME check_string COMMAND check_string)
+add_test(NAME check_misc COMMAND check_misc)
 add_test(NAME check_list COMMAND check_list)
 add_test(NAME check_hashtable COMMAND check_hashtable)
 add_test(NAME check_config COMMAND check_config)
