@@ -1,0 +1,9 @@
+[Unit]
+Description=User File Attributes (UFA) Daemon
+
+[Service]
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/ufad
+Type=forking
+
+[Install]
+WantedBy=default.target
