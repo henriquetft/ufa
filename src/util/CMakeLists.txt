@@ -13,4 +13,5 @@ add_library(ufa-util
         misc.c
         hashtable.c
         string.c
+        daemonize.c
 )

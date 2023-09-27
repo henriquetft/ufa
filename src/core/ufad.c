@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of UFA Daemon.                                              */
@@ -8,6 +8,7 @@
 /* For the terms of usage and distribution, please see COPYING file.          */
 /* ========================================================================== */
 
+#include "util/daemonize.h"
 #include "core/config.h"
 #include "core/data.h"
 #include "core/monitor.h"
@@ -22,21 +23,45 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <sysexits.h>
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
-static ufa_jsonrpc_server_t *server = NULL;
+static char *program_name    = "";
+static char *program_version = "0.1";
+
+/**
+ * PID file path
+ */
+static char *PID_FILE = NULL;
+
+/**
+ * Thread that runs JSON-RPC Server
+ */
 static pthread_t thread_server;
 
-/** Hash table mapping DIR -> WD */
+/**
+ * JSON-RPC Server
+ */
+static ufa_jsonrpc_server_t *server = NULL;
+
+/**
+ * Hash table mapping DIR -> WD
+ */
 static ufa_hashtable_t *table_current_dirs = NULL;
 
+/**
+ * Mask for config dir monitoring
+ */
 static const enum ufa_monitor_event CONFIG_DIR_MASK = UFA_MONITOR_MOVE |
 						      UFA_MONITOR_DELETE |
 						      UFA_MONITOR_CLOSEWRITE;
-
+/**
+ * Mask for repo monitoring
+ */
 static const enum ufa_monitor_event REPO_DIR_MASK = UFA_MONITOR_MOVE |
 						    UFA_MONITOR_DELETE |
 						    UFA_MONITOR_CLOSEWRITE;
@@ -45,16 +70,16 @@ static const enum ufa_monitor_event REPO_DIR_MASK = UFA_MONITOR_MOVE |
 /* AUXILIARY FUNCTIONS - DECLARATION                                          */
 /* ========================================================================== */
 
-static int *intptr_dup(int *i);
-static int *int_dup(int i);
-static void print_event(const struct ufa_event *event);
+static int start_ufad(const char *program);
+static void reload_config();
 static void callback_event_repo(const struct ufa_event *event);
 static void callback_event_config(const struct ufa_event *event);
-static void log_current_watched_dirs();
-static void reload_config();
 static void *start_server(void *thread_data);
-static void sig_handler(int signum);
 
+static void log_event(const struct ufa_event *event);
+static void log_current_watched_dirs();
+static void sig_handler(int signum);
+static void print_usage(FILE *stream);
 
 /* ========================================================================== */
 /* MAIN FUNCTION                                                              */
@@ -62,12 +87,80 @@ static void sig_handler(int signum);
 
 int main(int argc, char *argv[])
 {
-	//ufa_log_use_syslog();
+	program_name = argv[0];
+
+	int opt;
+	int log = 0;
+
+	int exit_status = EX_OK;
+	bool foreground = false;
+
+	while ((opt = getopt(argc, argv, "l:Fhv")) != -1) {
+		switch (opt) {
+		case 'v':
+			printf("%s\n", program_version);
+			exit_status = EX_OK;
+			goto end;
+		case 'h':
+			exit_status = EX_OK;
+			print_usage(stdout);
+			goto end;
+		case 'F':
+			foreground = true;
+			break;
+		case 'l':
+			if (log) {
+				print_usage(stderr);
+				exit_status = EXIT_FAILURE;
+				goto end;
+			} else {
+				log = 1;
+				enum ufa_log_level level =
+				    ufa_log_level_from_str(optarg);
+				ufa_log_setlevel(level);
+				ufa_debug("LOG LEVEL: %s", optarg);
+			}
+			break;
+		default:
+			print_usage(stderr);
+			exit_status = EXIT_FAILURE;
+			goto end;
+		}
+	}
+
+	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
+	PID_FILE = ufa_str_sprintf("%s/ufad.pid", cfg_dir);
+	ufa_free(cfg_dir);
+
+	if (!foreground) {
+		ufa_log_use_syslog();
+		ufa_daemon(program_name);
+	}
+
+	if (ufa_daemon_running(PID_FILE)) {
+		ufa_error("ufad already running");
+		exit_status = EXIT_FAILURE;
+		goto end;
+	}
+
+	exit_status = start_ufad(program_name);
+
+end:
+	ufa_free(PID_FILE);
+	return exit_status;
+}
+
+
+/* ========================================================================== */
+/* AUXILIARY FUNCTIONS                                                        */
+/* ========================================================================== */
+
+static int start_ufad(const char *program)
+{
+	ufa_info("Starting %s ...", program);
 
 	signal(SIGINT, sig_handler);
 	signal(SIGTERM, sig_handler);
-
-	// FIXME daemonize process
 
 	table_current_dirs = UFA_HASHTABLE_STRING();
 
@@ -78,11 +171,11 @@ int main(int argc, char *argv[])
 	struct ufa_list *list_dirs_config = ufa_config_dirs(true, &error);
 	if (error) {
 		ufa_error_print_and_free(error);
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 
 	if (!ufa_monitor_init()) {
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 
 	ufa_debug("Adding watcher to config dir: %s", cfg_dir);
@@ -103,7 +196,7 @@ int main(int argc, char *argv[])
 		} else {
 			bool r = ufa_hashtable_put(table_current_dirs,
 						   ufa_str_dup(i->data),
-						   int_dup(wd));
+						   ufa_int_dup(wd));
 			assert(r == false);
 		}
 	}
@@ -118,122 +211,22 @@ int main(int argc, char *argv[])
 
 	int ret = pthread_create(&thread_server, NULL, start_server, NULL);
 	if (ret != 0) {
-		fprintf(stderr, "Error creating thread!\n");
-		exit(EXIT_FAILURE);
+		ufa_error("Error creating thread!");
+		return EXIT_FAILURE;
 	}
 
 	ufa_monitor_wait();
 
-	ufa_info("Terminating %s ...", argv[0]);
+	ufa_info("Terminating %s ...", program);
 
 	ufa_jsonrpc_server_stop(server, NULL); // FIXME
 	ufa_jsonrpc_server_free(server);
 
-	ufa_info("%s terminated", argv[0]);
+	ufa_info("%s terminated", program);
 
 	return EXIT_SUCCESS;
 }
 
-/* ========================================================================== */
-/* AUXILIARY FUNCTIONS                                                        */
-/* ========================================================================== */
-
-
-static int *intptr_dup(int *i)
-{
-	if (i == NULL) {
-		return NULL;
-	}
-	int *n = ufa_malloc(sizeof(int));
-	*n = *i;
-	return n;
-}
-
-static int *int_dup(int i)
-{
-	int *n = ufa_malloc(sizeof(int));
-	*n = i;
-	return n;
-}
-
-static void print_event(const struct ufa_event *event)
-{
-	char str[256] = "";
-	ufa_event_tostr(event->event, str, 100);
-	ufa_debug("========== NEW EVENT ==========");
-
-	ufa_debug("EVENT......: %s", str);
-	if (event->target1)
-		ufa_debug("TARGET1....: %s", event->target1);
-	if (event->target2)
-		ufa_debug("TARGET2....: %s", event->target2);
-
-	ufa_debug("WATCHER1...: %d", event->watcher1);
-	ufa_debug("WATCHER2...: %d", event->watcher2);
-}
-
-
-/**
- * Handle events for file events on repo dir
- *
- * @param event
- */
-static void callback_event_repo(const struct ufa_event *event)
-{
-	struct ufa_error *error = NULL;
-	// FIXME handle .goutputstream-* files ?
-	print_event(event);
-	if (event->event == UFA_MONITOR_MOVE) {
-		if (event->target1 && event->target2) {
-			ufa_data_renamefile(event->target1, event->target2,
-					    &error);
-		} else if (event->target1) {
-			ufa_data_removefile(event->target1, &error);
-		} else if (event->target2) {
-			// file added in folder. do nohitng.
-		} else {
-			assert(false);
-		}
-	}
-
-	if (error && error->code != UFA_ERROR_FILE_NOT_IN_DB) {
-		ufa_error_print_and_free(error);
-	}
-}
-
-
-/**
- * Handle a config change event (when config file is modified)
- *
- * @param event
- */
-static void callback_event_config(const struct ufa_event *event)
-{
-	if (event->event == UFA_MONITOR_CLOSEWRITE &&
-	    ufa_str_endswith(event->target1, DIRS_FILE_NAME)) {
-		reload_config();
-	}
-}
-
-static void log_current_watched_dirs()
-{
-	if (!table_current_dirs) {
-		ufa_debug("Current dirs not initialized");
-		return;
-	}
-	ufa_info("Currently watching %d dirs",
-		 ufa_hashtable_size(table_current_dirs));
-	if (ufa_log_is_logging(UFA_LOG_DEBUG)) {
-		ufa_debug("Watched dirs:");
-		struct ufa_list *l = ufa_hashtable_keys(table_current_dirs);
-		for (UFA_LIST_EACH(i, l)) {
-			int *wd =
-				ufa_hashtable_get(table_current_dirs, i->data);
-			ufa_debug("   %s - %d", i->data, *wd);
-		}
-		ufa_list_free(l);
-	}
-}
 
 static void reload_config()
 {
@@ -252,7 +245,7 @@ static void reload_config()
 
 	ufa_hashtable_t *table_new_dirs = UFA_HASHTABLE_STRING();
 
-	// adding new dirs to list_add
+	// Adding new dirs to list_add
 	for (UFA_LIST_EACH(i, list_dirs_config)) {
 		int *wd = NULL;
 
@@ -263,7 +256,7 @@ static void reload_config()
 		} else {
 			wd = ufa_hashtable_get(table_current_dirs, i->data);
 			assert(wd != NULL);
-			wd = intptr_dup(wd);
+			wd = ufa_intptr_dup(wd);
 		}
 
 		ufa_debug("Putting %s -> %d on table_new_dirs",
@@ -278,7 +271,7 @@ static void reload_config()
 	for (UFA_LIST_EACH(i, list_current_dirs)) {
 		if (!ufa_hashtable_has_key(table_new_dirs, i->data)) {
 			list_remove = ufa_list_append(list_remove,
-			                              ufa_str_dup(i->data));
+						      ufa_str_dup(i->data));
 			ufa_debug("Adding '%s' to list_remove", i->data);
 		}
 	}
@@ -304,9 +297,10 @@ static void reload_config()
 			assert(r == true);
 		} else {
 			bool r = ufa_hashtable_put(
-			    table_new_dirs, ufa_str_dup(i->data), int_dup(wd));
+			    table_new_dirs, ufa_str_dup(i->data),
+						   ufa_int_dup(wd));
 			ufa_debug("Put %s - %d on table_new_dirs", i->data, wd);
-			// assert element already exist
+			// Assert element already exist
 			assert(r == false);
 		}
 	}
@@ -325,17 +319,97 @@ static void reload_config()
 }
 
 
+/**
+ * Handle events for file events on repo dir
+ *
+ * @param event
+ */
+static void callback_event_repo(const struct ufa_event *event)
+{
+	struct ufa_error *error = NULL;
+	// FIXME handle .goutputstream-* files ?
+	log_event(event);
+	if (event->event == UFA_MONITOR_MOVE) {
+		if (event->target1 && event->target2) {
+			ufa_data_renamefile(event->target1, event->target2,
+					    &error);
+		} else if (event->target1) {
+			ufa_data_removefile(event->target1, &error);
+		} else if (event->target2) {
+			// File added in folder. Do nohitng.
+		} else {
+			assert(false);
+		}
+	}
+
+	if (error && error->code != UFA_ERROR_FILE_NOT_IN_DB) {
+		ufa_error_print_and_free(error);
+	}
+}
+
+
+/**
+ * Handle a config change event (when config file is modified)
+ *
+ * @param event
+ */
+static void callback_event_config(const struct ufa_event *event)
+{
+	if (event->event == UFA_MONITOR_CLOSEWRITE &&
+	    ufa_str_endswith(event->target1, DIRS_FILE_NAME)) {
+		reload_config();
+	}
+}
+
+
 static void *start_server(void *thread_data)
 {
 	struct ufa_error *error = NULL;
 	server = ufa_jsonrpc_server_new();
 	ufa_jsonrpc_server_start(server, &error);
 	if (!server || error) {
-		ufa_fatal("Error starting JSON-RPC server\n");
+		ufa_fatal("Error starting JSON-RPC server");
 		ufa_error_print_and_free(error);
 		exit(EXIT_FAILURE);
 	}
 	return NULL;
+}
+
+
+static void log_event(const struct ufa_event *event)
+{
+	char str[256] = "";
+	ufa_event_tostr(event->event, str, 100);
+	ufa_debug("========== NEW EVENT ==========");
+
+	ufa_debug("EVENT......: %s", str);
+	if (event->target1)
+		ufa_debug("TARGET1....: %s", event->target1);
+	if (event->target2)
+		ufa_debug("TARGET2....: %s", event->target2);
+
+	ufa_debug("WATCHER1...: %d", event->watcher1);
+	ufa_debug("WATCHER2...: %d", event->watcher2);
+}
+
+static void log_current_watched_dirs()
+{
+	if (!table_current_dirs) {
+		ufa_debug("Current dirs not initialized");
+		return;
+	}
+	ufa_info("Currently watching %d dirs",
+		 ufa_hashtable_size(table_current_dirs));
+	if (ufa_log_is_logging(UFA_LOG_DEBUG)) {
+		ufa_debug("Watched dirs:");
+		struct ufa_list *l = ufa_hashtable_keys(table_current_dirs);
+		for (UFA_LIST_EACH(i, l)) {
+			int *wd =
+			    ufa_hashtable_get(table_current_dirs, i->data);
+			ufa_debug("   %s - %d", i->data, *wd);
+		}
+		ufa_list_free(l);
+	}
 }
 
 
@@ -348,4 +422,18 @@ static void sig_handler(int signum)
 		ufa_info("SIGTERM received. Shutting down...");
 		ufa_monitor_stop();
 	}
+}
+
+
+static void print_usage(FILE *stream)
+{
+	fprintf(stream, "\nUsage: %s [OPTIONS] [COMMAND]\n", program_name);
+	fprintf(stream, "\nUFA Daemon\n");
+	fprintf(stream,
+		"\nOPTIONS\n"
+		"  -h\t\tPrint this help and quit\n"
+		"  -v\t\tPrint version information and quit\n"
+		"  -F\t\tRun in foreground\n"
+		"  -l LOG_LEVEL\tLog levels: debug, info, warn, error, fatal\n"
+		"\n");
 }
