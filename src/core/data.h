@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Functions that allows the user to interact with repositories               */

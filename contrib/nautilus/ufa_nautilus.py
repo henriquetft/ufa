@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2021, Henrique Teófilo
+# Copyright (c) 2021-2023 Henrique Teófilo
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -104,7 +104,7 @@ class Commands:
 
     @classmethod
     def is_ok(cls):
-        """ Checks whether CLI app is found """
+        """ Checks whether CLI app was found """
         return cls.ZENITY is not None
 
     @classmethod

@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2021 Henrique Teófilo                                        */
+/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of UFAFS -- a FUSE file system.                             */
@@ -245,7 +245,7 @@ int ufa_fuse_mkdir(const char *path, mode_t mode)
 	}
 }
 
-// ./ufafs -f -s --repository=/home/henrique/files /home/henrique/teste
+// ufafs -f -s --repository=/home/henrique/files /home/henrique/teste
 int main(int argc, char *argv[])
 {
 	ufa_debug("Initializing UFA FUSE Filesystem ...");

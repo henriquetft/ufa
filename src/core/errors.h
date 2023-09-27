@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* Copyright (c) 2023 Henrique Teófilo                                        */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Definition of common error codes.                                          */

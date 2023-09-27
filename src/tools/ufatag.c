@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of ufatag command line utility.                             */

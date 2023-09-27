@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of ufaattr command line utility.                            */

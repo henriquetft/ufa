@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022 Henrique Teófilo                                        */
+/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of ufafind command line utility.                            */

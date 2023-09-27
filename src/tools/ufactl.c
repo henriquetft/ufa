@@ -77,7 +77,7 @@ static void print_usage(FILE *stream)
 		"  add\t\tAdd repository directory to watching list\n"
 		"  remove\tRemove repository directory from watching list\n"
 		"  list\t\tList current watched repositories\n"
-		"  init\t\tInitialize repository"
+		"  init\t\tInitialize repository\n"
 		"\n"
 		"Run '%s COMMAND -h' for more information on a command.\n"
 		"\n",
@@ -199,7 +199,6 @@ int main(int argc, char *argv[])
 	int r = 0, log = 0;
 
 	while ((opt = getopt(argc, argv, ":l:hv")) != -1 && !error_usage) {
-		//printf(".....opt = (%c); optind = %d\n", opt, optind);
 		switch (opt) {
 		case 'v':
 			printf("%s\n", program_version);
