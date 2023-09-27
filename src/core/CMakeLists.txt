@@ -28,7 +28,9 @@ target_link_libraries(ufafs
         ufa-util)
 
 # Adding executable ufad
-add_executable(ufad ufad.c monitor_inotify.c)
+add_executable(ufad
+        ufad.c
+        monitor_inotify.c)
 target_link_libraries(ufad ufa-core ufa-jsonrpc-server Threads::Threads)
 
 # Adding executable
