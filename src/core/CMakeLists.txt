@@ -33,6 +33,3 @@ add_executable(ufad
         monitor_inotify.c)
 target_link_libraries(ufad ufa-core ufa-jsonrpc-server Threads::Threads)
 
-# Adding executable
-add_executable(teste teste.c)
-target_link_libraries(teste ufa-core Threads::Threads)
