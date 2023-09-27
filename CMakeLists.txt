@@ -45,11 +45,28 @@ include_directories(src/)
 
 enable_testing()
 
-# Adding dir of ufa modules
+# Add ufa subdirs
 add_subdirectory(src/util)
 add_subdirectory(src/core)
 add_subdirectory(src/tools)
 add_subdirectory(src/json)
 add_subdirectory(tests)
 
+# Generate systemd service
+configure_file(config/ufad.service.in config/ufad.service)
 
+# Executables to install in bin folder
+list(APPEND UFA_TARGETS_TO_INSTALL "ufad")
+list(APPEND UFA_TARGETS_TO_INSTALL "ufafs")
+list(APPEND UFA_TARGETS_TO_INSTALL "ufaattr")
+list(APPEND UFA_TARGETS_TO_INSTALL "ufafind")
+list(APPEND UFA_TARGETS_TO_INSTALL "ufatag")
+list(APPEND UFA_TARGETS_TO_INSTALL "ufactl")
+
+# Install executables
+foreach (t ${UFA_TARGETS_TO_INSTALL})
+    install(TARGETS ${t} DESTINATION bin)
+endforeach()
+
+# Install systemd service
+install(FILES ${PROJECT_BINARY_DIR}/config/ufad.service DESTINATION $ENV{HOME}/.config/systemd/user)
