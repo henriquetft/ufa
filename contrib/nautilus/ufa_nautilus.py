@@ -40,7 +40,7 @@ to manage tags and attributes
 """
 
 __author__ = "Henrique Teofilo <henrique at teofilo.me>"
-__version__ = "1.0"
+__version__ = "0.1"
 __appname__ = "ufa-nautilus"
 __app_disp_name__ = "UFA Nautilus"
 __website__ = "https://github.com/henriquetft/ufa"
@@ -58,7 +58,7 @@ from gi.repository import Nautilus, GObject
 
 def log(message):
     """ Log message to the console """
-    print(message)
+    print(f"[{__app_disp_name__}] {message}")
 
 
 def get_ufa_repo_by_file(filepath):
@@ -91,10 +91,10 @@ def error_handler(func):
         """ Decorator wrapper function """
         try:
             func(*args, **kwargs)
-        except Exception:
+        except Exception as e:
             print(f"Error on {func.__name__}")
             traceback.print_exception(*sys.exc_info())
-            Commands.dialog_error("Error")
+            Commands.dialog_error(str(e))
     return wrapper
 
 
@@ -111,16 +111,17 @@ class Commands:
     def execute(cls, cmd, exp=[0], returncode=False):
         """ Executes a shell command """
         command = cmd.split(" ")[0]
-        with Popen(cmd, shell=True, stdout=subprocess.PIPE) as proc:
+        with Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
             try:
                 log(f'\nExecuting command:\n{cmd}')
-                stdout = proc.communicate()[0]
+                stdout, stderr = proc.communicate()
                 if proc.returncode not in exp:
-                    raise Exception("Error on {}. return code: {}".format(
-                        command, proc.returncode))
+                    raise Exception("Error on {}.\nReturn code: {}\n\n{}".format(
+                        command, proc.returncode, stderr.decode('utf-8')))
                 stdout = stdout.decode('utf-8')
                 stdout = stdout.strip()
                 log(f'\nCommand return stdout:\n{stdout}')
+                log(f'\nCommand return stderr:\n{stderr}')
                 log(f'\nCommand returncode:\n{proc.returncode}')
                 if returncode:
                     return stdout, proc.returncode
@@ -131,16 +132,20 @@ class Commands:
 
     @classmethod
     def dialog_tags(cls, filename, all_tags, tags_for_file):
+        log("ALL TAGS: {}".format(all_tags))
+        log("TAGS FOR FILE {}: {}".format(filename, tags_for_file))
         dict_tags_file = {tag: tag in tags_for_file for tag in all_tags}
-        tags_param = ' '.join("{} {}".format(str(val).upper(), key)
+        log("DICT TAGS {}".format(str(dict_tags_file)))
+        tags_param = ' '.join("{} \"{}\"".format(str(val).upper(), key)
                               for (key, val) in dict_tags_file.items())
+        log("TAGS PARAM {}".format(tags_param))
         stdout, ret = cls.execute("""{} --list --text {} \
                                   --checklist \
                                   --column 'Pick' --column 'Tags' \
                                   --title 'Choose tags for this file' \
                                   --width=350 --height=400 {} \
                                   --separator=':'""".format(cls.ZENITY, shlex.quote(filename),
-                                                            tags_param),
+                                                               tags_param),
                                   exp=[0, 1], returncode=True)
         if ret == 1:  # when the user cancels operation
             return None
@@ -192,6 +197,7 @@ class Commands:
     @classmethod
     def dialog_list_attrs(cls, filename, attrs):
         """ Receives filename and a list of tuples attribute,value """
+        log("ATTRS: '{}'".format(attrs))
         attrs_str = " ".join(["\"" + str(x[0]).strip() + '" "'
                               + str(x[1]).strip() + "\"" for x in attrs])
         stdout = cls.execute("""{} --list \
@@ -256,8 +262,10 @@ class UFACommand:
         stdout = Commands.execute(
             "{} -l off describe {}".format(self.ufaattr,
                                            shlex.quote(filepath)))
-        list_attrs = stdout.split('\n')
+        if not stdout:
+            return []
 
+        list_attrs = stdout.split('\n')
         return list_attrs
 
     def get_attr_value_for_file(self, repo, filepath, attribute):
@@ -314,6 +322,7 @@ class MenuProvider(GObject.GObject, Nautilus.MenuProvider):
     def menu_activate_list_attrs(self, menu, repo, filename):
         log(f"Calling list_attrs: repo={repo}, filepath={filename}")
         ret = self.cmd.get_attrs_for_file(repo, filename)
+        log(f"Attrs for file '{filename}': '{ret}'")
         arg = list(map(lambda x: tuple(x.split('\t')), ret))
         # choose an attribute to edit
         attr_to_edit = Commands.dialog_list_attrs(filename, arg)
