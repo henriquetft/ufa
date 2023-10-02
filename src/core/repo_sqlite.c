@@ -163,7 +163,7 @@ ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error)
 	}
 	char *filepath =
 	    ufa_util_joinpath(repo_abs, REPOSITORY_FILENAME, NULL);
-	ufa_debug("Initializing repo %s", filepath);
+	ufa_debug("Initializing repo '%s'", filepath);
 	repo = open_sqlite_conn(filepath, repo_abs, error);
 	if (repo != NULL) {
 		create_repo_indicator_file(repo_abs, error);
@@ -321,6 +321,8 @@ int ufa_repo_inserttag(ufa_repo_t *repo,
 		       const char *tag,
 		       struct ufa_error **error)
 {
+	ufa_debug("insertag: repo='%s' tag='%s'", repo->repository_path, tag);
+
 	int tag_id = get_tag_id_by_name(repo, tag, error);
 	sqlite3_stmt *stmt = NULL;
 
@@ -338,7 +340,8 @@ int ufa_repo_inserttag(ufa_repo_t *repo,
 bool ufa_repo_settag(ufa_repo_t *repo, const char *filepath, const char *tag,
 		     struct ufa_error **error)
 {
-	ufa_debug("Setting tag '%s' for file '%s'", tag, filepath);
+	ufa_debug("Setting tag '%s' for file '%s' (repo: '%s')", tag, filepath,
+		  repo->repository_path);
 
 	bool status = false;
 	char *filename = ufa_util_getfilename(filepath);
@@ -355,7 +358,7 @@ bool ufa_repo_settag(ufa_repo_t *repo, const char *filepath, const char *tag,
 
 	status = set_tag_on_file(repo, file_id, tag_id, error);
 end:
-	free(filename);
+	ufa_free(filename);
 	return status;
 }
 
@@ -687,6 +690,7 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 	char *repository = NULL;
 
 
+	// Get dir
 	if (ufa_util_isdir(filepath)) {
 		dirname = ufa_str_dup(filepath);
 	} else if (ufa_util_isfile(filepath)) {
@@ -698,25 +702,26 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 	}
 
 
-	repodb_file = ufa_util_joinpath(dirname, REPOSITORY_FILENAME, NULL);
+	repo_ind_file = ufa_util_joinpath(
+	    dirname, REPOSITORY_INDICATOR_FILE_NAME, NULL);
 
-	// use .db
-	if (ufa_util_isfile(repodb_file)) {
-		repository = ufa_str_dup(dirname);
+	// Read real repo file from INDICATOR file
+	if (ufa_util_isfile(repo_ind_file)) {
+		file_read = fopen(repo_ind_file, "r");
+		char linebuf[1024];
+		if (fgets(linebuf, 1024, file_read) != NULL) {
+			char *line = ufa_str_trim(linebuf);
+			repository = ufa_str_dup(line);
+		} else {
+			perror("fgets"); // FIXME
+			goto end;
+		}
 	} else {
-		repo_ind_file = ufa_util_joinpath(
-		    dirname, REPOSITORY_INDICATOR_FILE_NAME, NULL);
-
-		if (ufa_util_isfile(repo_ind_file)) {
-			file_read = fopen(repo_ind_file, "r");
-			char linebuf[1024];
-			if (fgets(linebuf, 1024, file_read) != NULL) {
-				char *line = ufa_str_trim(linebuf);
-				repository = ufa_str_dup(line);
-			} else {
-				perror("fgets"); // FIXME
-				goto end;
-			}
+		// OR try get repo .db file
+		repodb_file =
+		    ufa_util_joinpath(dirname, REPOSITORY_FILENAME, NULL);
+		if (ufa_util_isfile(repodb_file)) {
+			repository = ufa_str_dup(dirname);
 		}
 	}
 
@@ -730,10 +735,10 @@ end:
 	if (file_read != NULL) {
 		fclose(file_read);
 	}
-	free(repofile);
-	free(dirname);
-	free(repodb_file);
-	free(repo_ind_file);
+	ufa_free(repofile);
+	ufa_free(dirname);
+	ufa_free(repodb_file);
+	ufa_free(repo_ind_file);
 	return repository;
 }
 
