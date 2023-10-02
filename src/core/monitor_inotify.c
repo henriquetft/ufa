@@ -13,8 +13,8 @@
 #include "util/logging.h"
 #include "util/misc.h"
 #include "util/string.h"
-#include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include <sys/inotify.h>
 #include <sys/types.h>
@@ -91,9 +91,9 @@ bool ufa_monitor_init()
 	}
 	int fd = inotify_init();
 	if (fd < 0) {
-		perror("inotify_init");
-		fprintf(stderr, "Failed to initialize inotify. Are you running "
-				"a inotify-enabled kernel?\n");
+		ufa_error("inotify_init: %s", strerror(errno));
+		ufa_error("Failed to initialize inotify. Are you running "
+			  "a inotify-enabled kernel?\n");
 		return false;
 	}
 
@@ -102,7 +102,7 @@ bool ufa_monitor_init()
 	// creating eventfd to recieve termination request
 	efd = eventfd(0, 0);
 	if (efd == -1) {
-		perror("eventfd");
+		ufa_error("eventfd: %s", strerror(errno));
 		return false;
 	}
 
@@ -127,7 +127,7 @@ bool ufa_monitor_init()
 				 loop_read_events,
 				 NULL);
 	if (ret < 0) {
-		perror("pthread_create");
+		ufa_error("pthread_create: %s", strerror(errno));
 		close_and_free_state();
 	}
 	return !ret;
@@ -143,7 +143,7 @@ bool ufa_monitor_stop()
 	ssize_t s;
 	s = write(efd, &u, sizeof(uint64_t));
 	if (s != sizeof(uint64_t)) {
-		perror("write");
+		ufa_error("write: %s", strerror(errno));
 	}
 
 	ufa_debug("Waiting for event loop thread to terminate");
@@ -198,7 +198,7 @@ end:
 	return wd;
 
 error_inotify:
-	perror("inotify_add_watch");
+	ufa_error("inotify_add_watch: %s", strerror(errno));
 	return wd;
 }
 
@@ -210,7 +210,7 @@ bool ufa_monitor_remove_watcher(int watcher)
 	bool is_ok = !inotify_rm_watch(inotify, watcher);
 
 	if (!is_ok) {
-		perror("inotify_rm_watch");
+		ufa_error("inotify_rm_watch: %s", strerror(errno));
 		goto end;
 	}
 
@@ -500,7 +500,7 @@ static void read_inotify_events()
 
 	len = read(inotify, buf, BUF_LEN);
 	if (len < 0) {
-		perror("read inotify");
+		ufa_error("read inotify: %s", strerror(errno));
 	} else if (len == 0) {
 		ufa_warn("inotify end of file");
 		return;
@@ -559,7 +559,7 @@ static void *loop_read_events(void *arg)
 		ufa_debug("Waiting fds ready for reading...");
 		retval = select(maxfd, &rfds, NULL, NULL, NULL);
 		if (retval < 0) {
-			perror("select");
+			ufa_error("select: %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		} else if (retval == 0) {
 			// 0 is timeout, but it is not being used
