@@ -1,2 +1,9 @@
-$ apt install python3-nautilus
+TO INSTALL
+----------
+$ sudo apt install python3-nautilus
 Copy file to ~/.local/share/nautilus-python/extensions
+
+TO DEBUG
+--------
+$ nautilus -q
+$ nautilus --no-desktop
