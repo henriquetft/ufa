@@ -54,7 +54,7 @@ char *TAGS[3] = {TAG1, TAG2, TAG3};
 
 static void create_file(const char *file)
 {
-	int fd = open(file, O_RDWR | O_CREAT);
+	int fd = open(file, O_RDWR | O_CREAT, 0600);
 	if (fd != -1) {
 		close(fd);
 	}
