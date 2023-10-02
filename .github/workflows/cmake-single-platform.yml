@@ -22,8 +22,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Install xmllint
-      run: sudo apt-get install -y check
+    - name: Install dependencies
+      run: sudo apt-get install -y check libfuse3-dev
   
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
