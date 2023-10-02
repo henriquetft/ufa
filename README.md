@@ -1,6 +1,6 @@
 # UFA (User File Attributes)
 
-![example workflow](https://github.com/henriquetft/ufa/actions/workflows/cmake-single-platform.yml/badge.svg)
+![workflow](https://github.com/henriquetft/ufa/actions/workflows/cmake-single-platform.yml/badge.svg)
 
 UFA - User File Attributes is a system that allows the user to set and manage custom tags and "key-values" attributes for files.
 
