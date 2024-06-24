@@ -11,6 +11,7 @@
 #ifndef LOGGING_H_
 #define LOGGING_H_
 
+#include "util/error.h"
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,11 +19,11 @@
 
 enum ufa_log_level {
 	UFA_LOG_DEBUG = 0,
-	UFA_LOG_INFO = 1,
-	UFA_LOG_WARN = 2,
+	UFA_LOG_INFO  = 1,
+	UFA_LOG_WARN  = 2,
 	UFA_LOG_ERROR = 3,
 	UFA_LOG_FATAL = 4,
-	UFA_LOG_OFF = INT_MAX,
+	UFA_LOG_OFF   = INT_MAX,
 };
 
 void ufa_debug(const char *format, ...);
@@ -34,6 +35,8 @@ void ufa_warn(const char *format, ...);
 void ufa_error(const char *format, ...);
 
 void ufa_fatal(const char *format, ...);
+
+void ufa_error_error(struct ufa_error *error);
 
 enum ufa_log_level ufa_log_level_from_str(const char *level);
 const char *ufa_log_level_to_str(enum ufa_log_level level);

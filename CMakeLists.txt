@@ -12,6 +12,9 @@ project(ufa C)
 set(CMAKE_C_STANDARD 99)
 add_compile_definitions(_GNU_SOURCE)
 
+# Options
+option(WITH_NAUTILUS_INTEGRATION "Install nautilus integration" OFF)
+
 # Definition for JSMN
 add_compile_definitions(JSMN_STATIC)
 
@@ -28,6 +31,9 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # Finding check for unit test
 include(FindCheck)
 find_package(Check REQUIRED)
+
+# Search for nautilus-python
+PKG_SEARCH_MODULE(NAUTILUS_PYTHON nautilus-python)
 
 # Choosing directory of generated binaries
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -70,3 +76,12 @@ endforeach()
 
 # Install systemd service
 install(FILES ${PROJECT_BINARY_DIR}/config/ufad.service DESTINATION $ENV{HOME}/.config/systemd/user)
+
+# Install nautilus integration
+if(WITH_NAUTILUS_INTEGRATION)
+    if(NAUTILUS_PYTHON_FOUND)
+        install(FILES contrib/ufa_nautilus.py DESTINATION $ENV{HOME}/.local/share/nautilus-python/extensions)
+    else()
+        message(FATAL_ERROR "nautilus-python is required to use nautilus integration" )
+    endif()
+endif()

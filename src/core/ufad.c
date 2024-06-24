@@ -25,6 +25,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sysexits.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
@@ -95,6 +97,9 @@ int main(int argc, char *argv[])
 	int exit_status = EX_OK;
 	bool foreground = false;
 
+	FILE *file_log = NULL;
+	char *filepath_log = NULL;
+
 	while ((opt = getopt(argc, argv, "l:Fhv")) != -1) {
 		switch (opt) {
 		case 'v':
@@ -143,9 +148,27 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
+	if (!foreground) {
+		if (!log) {
+			ufa_log_setlevel(UFA_LOG_INFO);
+		}
+		struct ufa_error *error = NULL;
+		filepath_log = ufa_config_getlogfilepath(&error);
+		if (error) {
+			ufa_error_error(error);
+		} else {
+			file_log = fopen(filepath_log, "a");
+			ufa_log_use_file(file_log);
+		}
+
+	}
 	exit_status = start_ufad(program_name);
 
 end:
+	if (file_log) {
+		fclose(file_log);
+	}
+	ufa_free(filepath_log);
 	ufa_free(PID_FILE);
 	return exit_status;
 }

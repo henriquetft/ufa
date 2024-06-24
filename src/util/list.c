@@ -119,8 +119,7 @@ struct ufa_list *ufa_list_concat(struct ufa_list *list, struct ufa_list *list2)
 }
 struct ufa_list *ufa_list_get(struct ufa_list *list, unsigned int pos)
 {
-	unsigned int x;
-	for (x = 0; (x < pos && list != NULL); x++) {
+	for (unsigned int x = 0; (x < pos && list != NULL); x++) {
 		list = list->next;
 	}
 	return list;

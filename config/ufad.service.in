@@ -2,7 +2,7 @@
 Description=User File Attributes (UFA) Daemon
 
 [Service]
-ExecStart=@CMAKE_INSTALL_PREFIX@/bin/ufad
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/ufad -l debug
 Type=forking
 
 [Install]

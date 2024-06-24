@@ -143,7 +143,8 @@ bool ufa_monitor_stop()
 	ssize_t s;
 	s = write(efd, &u, sizeof(uint64_t));
 	if (s != sizeof(uint64_t)) {
-		ufa_error("write: %s", strerror(errno));
+		ufa_error("cannot send stop command: %s", strerror(errno));
+		return false;
 	}
 
 	ufa_debug("Waiting for event loop thread to terminate");
@@ -425,8 +426,8 @@ static void handle_inotify_delete(struct inotify_event *event)
 
 	uevent = new_ufa_event(UFA_MONITOR_DELETE,
 			       event->wd, 0,
-			       filepath, NULL);
-
+			       ufa_str_dup(filepath), NULL);
+	ufa_free(filepath);
 	process_ufa_event(uevent);
 }
 
@@ -440,8 +441,8 @@ static void handle_inotify_closewrite(struct inotify_event *event)
 
 	uevent = new_ufa_event(UFA_MONITOR_CLOSEWRITE,
 			       event->wd, 0,
-			       filepath, NULL);
-
+			       ufa_str_dup(filepath), NULL);
+	ufa_free(filepath);
 	process_ufa_event(uevent);
 }
 
@@ -464,8 +465,10 @@ static void handle_inotify_moved(const struct inotify_event *event_from,
 		ufa_debug("..Path to: %s", path_to);
 		uevent = new_ufa_event(UFA_MONITOR_MOVE,
 				       watcher1, watcher2,
-				       path_from, path_to);
-
+				       ufa_str_dup(path_from),
+				       ufa_str_dup(path_to));
+		ufa_free(path_from);
+		ufa_free(path_to);
 	} else if (event_to == NULL) {
 		ufa_debug("Move to outside:");
 		char *dir = ufa_hashtable_get(table, &(event_from->wd));
@@ -473,7 +476,8 @@ static void handle_inotify_moved(const struct inotify_event *event_from,
 		ufa_debug("..Moving from: %s\n", filepath);
 		uevent = new_ufa_event(UFA_MONITOR_MOVE,
 				       event_from->wd, 0,
-				       filepath, NULL);
+				       ufa_str_dup(filepath), NULL);
+		ufa_free(filepath);
 
 
 	} else if (event_from == NULL) {
@@ -483,8 +487,8 @@ static void handle_inotify_moved(const struct inotify_event *event_from,
 		ufa_debug("..Moving to: %s\n", filepath);
 		uevent = new_ufa_event(UFA_MONITOR_MOVE,
 				       0, event_to->wd,
-				       NULL, filepath);
-
+				       NULL, ufa_str_dup(filepath));
+		ufa_free(filepath);
 	}
 
 	process_ufa_event(uevent);

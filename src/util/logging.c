@@ -9,6 +9,7 @@
 /* ========================================================================== */
 
 #include "util/logging.h"
+#include "util/error.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -162,6 +163,17 @@ void ufa_fatal(const char *format, ...)
 		va_start(ap, format);
 		write_log(UFA_LOG_FATAL, format, ap);
 		va_end(ap);
+	}
+}
+
+void ufa_error_error(struct ufa_error *error)
+{
+	if (!error) {
+		return;
+	}
+
+	if (loglevel <= UFA_LOG_ERROR) {
+		ufa_error("error: %d, %s", error->code, error->message);
 	}
 }
 

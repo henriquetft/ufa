@@ -14,7 +14,6 @@
 #define UFA_JSONRPC_SERVER_H_
 
 #include <stdbool.h>
-
 #include "util/error.h"
 
 #define SOCKET_PATH "/tmp/ufarpc_unix_sock.server"

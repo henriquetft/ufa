@@ -17,9 +17,8 @@
 
 void ufa_error_new(struct ufa_error **error, int code, char *format, ...)
 {
-	if (error == NULL) {
-		return;
-	}
+	ufa_return_if(error == NULL);
+
 	va_list ap;
 	va_start(ap, format);
 	char *m = ufa_str_vprintf(format, ap);
@@ -83,9 +82,8 @@ void ufa_error_print_and_free_prefix(struct ufa_error *error,
 
 struct ufa_error *ufa_error_clone(const struct ufa_error *error)
 {
-	if (error == NULL) {
-		return NULL;
-	}
+	ufa_return_val_if(error == NULL, NULL);
+	
 	struct ufa_error *err = ufa_malloc(sizeof *err);
 	err->code = error->code;
 	err->message = ufa_str_dup(error->message);

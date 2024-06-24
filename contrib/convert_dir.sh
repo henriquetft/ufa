@@ -19,13 +19,17 @@ if [ "$#" -ne 2 ]; then
 	exit 1
 fi
 
-UFATAG="./ufatag"
-if [ ! -f "$UFATAG" ]; then
-	UFATAG=$(which ufatag)
-fi
+UFATAG=$(which ufatag)
+UFACTL=$(which ufactl)
+
 
 [ -f "$UFATAG" ] || {
 	echo "ufatag not found"
+	exit 1
+}
+
+[ -f "$UFACTL" ] || {
+	echo "ufactl not found"
 	exit 1
 }
 
@@ -43,6 +47,9 @@ REPO_DIR="$2"
 	[ "$?" != "0" ] && exit 1
 }
 
+# Must be a repo
+$UFACTL init "$REPO_DIR"
+
 
 find "${SRC_DIR}" -name "*" -type f | while read FILE; do 
 	DIR=$(dirname "$FILE")
@@ -56,8 +63,9 @@ find "${SRC_DIR}" -name "*" -type f | while read FILE; do
 	if [ ! -f "${SRC_DIR}/${FILENAME}" ]; then
 		cp "${FILE}" "${REPO_DIR}/${FILENAME}"
 		echo "Copied \"${REPO_DIR}/${FILENAME}\""
-		echo "Setting tag \"${TAG}\" on \"${FILENAME}\" ..." 
-		$UFATAG -r "${REPO_DIR}" set "${FILENAME}" "${TAG}"
+		echo "Setting tag \"${TAG}\" on \"${FILENAME}\" ..."
+		echo $UFATAG set "${REPO_DIR}/${FILENAME}" "${TAG}"
+		$UFATAG set "${REPO_DIR}/${FILENAME}" "${TAG}"
 		[ $? -ne 0 ] && echo "Error setting tags on ${FILENAME}"
 	else
 		echo "File \"${FILENAME}\" will not be copied because it is not in a subfolder"

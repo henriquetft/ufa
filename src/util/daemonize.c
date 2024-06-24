@@ -63,8 +63,6 @@ bool ufa_daemon_running(const char *pidfile)
 
 void ufa_daemon(const char *cmd)
 {
-	ufa_log_setlevel(UFA_LOG_INFO);
-
 	int			i, fd0, fd1, fd2;
 	pid_t			pid;
 	struct rlimit		rl;

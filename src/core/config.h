@@ -16,6 +16,7 @@
 
 #define CONFIG_DIR_NAME             "ufa"
 #define DIRS_FILE_NAME              "dirs"
+#define LOG_FILE_NAME               "ufad.log"
 #define DIRS_FILE_DEFAULT_STRING    "# UFA repository folders\n\n"
 
 
@@ -49,6 +50,14 @@ bool ufa_config_add_dir(const char *dir, struct ufa_error **error);
  * @return
  */
 bool ufa_config_remove_dir(const char *dir, struct ufa_error **error);
+
+/**
+ * Get path of log file
+ *
+ * @param error pointer to pointer to error structure
+ * @return A newly-allocated string containing path to log file
+ */
+char *ufa_config_getlogfilepath(struct ufa_error **error);
 
 
 #endif /* UFA_CONFIG_H_ */

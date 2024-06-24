@@ -285,7 +285,7 @@ START_TEST(api_gettags_ok)
 	ck_assert(ufa_list_find_by_data(tags,
 					TAG2,
 					(ufa_list_equal_fn_t) ufa_str_equals));
-	ck_assert_int_eq(ufa_list_size(tags), 2);
+	ck_assert_int_eq(2, ufa_list_size(tags));
 
 	ufa_list_free(tags);
 }
@@ -342,7 +342,9 @@ START_TEST(api_cleartags_ok)
 
 	// Ensure tag list is empty
 	ufa_jsonrpc_api_gettags(api, TMP_TEST_FILE1, &tags_after, &error);
-	ck_assert_int_eq(ufa_list_size(tags_after), 0);
+	ck_assert_int_eq(0, ufa_list_size(tags_after));
+
+
 	ufa_list_free(tags_after);
 }
 END_TEST

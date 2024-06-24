@@ -172,6 +172,23 @@ end:
 	return ret;
 }
 
+char *ufa_config_getlogfilepath(struct ufa_error **error)
+{
+	if (!check_and_create_config_dir(error)) {
+		goto end;
+	}
+
+	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
+	char *logfile = ufa_util_joinpath(cfg_dir, LOG_FILE_NAME, NULL);
+
+	ufa_free(cfg_dir);
+
+	return logfile;
+
+end:
+	return NULL;
+}
+
 
 /* ========================================================================== */
 /* AUXILIARY FUNCTIONS                                                        */
