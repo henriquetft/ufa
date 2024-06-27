@@ -11,8 +11,6 @@
 #ifndef UFA_ERROR_H_
 #define UFA_ERROR_H_
 
-#include <stdarg.h>
-
 struct ufa_error {
 	int code;
 	char *message;
