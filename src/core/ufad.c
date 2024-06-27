@@ -13,6 +13,7 @@
 #include "core/data.h"
 #include "core/monitor.h"
 #include "core/repo.h"
+#include "core/errors.h"
 #include "util/error.h"
 #include "util/hashtable.h"
 #include "util/logging.h"
@@ -26,7 +27,6 @@
 #include <unistd.h>
 #include <sysexits.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
@@ -133,7 +133,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	// Get or create config dir
 	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
+	if (!ufa_util_isdir(cfg_dir)) {
+		struct ufa_error *error = NULL;
+		ufa_util_mkdir(cfg_dir, &error);
+		if (error) {
+			ufa_error_exit(error, UFA_ERROR_FILE);
+		}
+	}
+
 	PID_FILE = ufa_str_sprintf("%s/ufad.pid", cfg_dir);
 	ufa_free(cfg_dir);
 
