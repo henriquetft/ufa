@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* Copyright (c) 2023-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* API for communicating with JSON-RPC server                                 */
@@ -16,6 +16,7 @@
 #include "util/logging.h"
 #include "util/misc.h"
 #include "util/string.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -55,6 +56,8 @@ static bool request_jsonrpc(ufa_jsonrpc_api_t *api,
 
 ufa_jsonrpc_api_t *ufa_jsonrpc_api_init(struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	struct ufa_jsonrpc_api *obj = NULL;
 
 	struct sockaddr_un addr;
@@ -64,7 +67,9 @@ ufa_jsonrpc_api_t *ufa_jsonrpc_api_init(struct ufa_error **error)
 	data_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (data_socket == -1) {
 		perror("socket");
-		exit(EXIT_FAILURE);// FIXME
+		ufa_error("%s: %s", __func__, strerror(errno));
+		ufa_error_new(error, UFA_ERROR_INTERNAL, strerror(errno));
+		return NULL;
 	}
 
 	memset(&addr, 0, sizeof(struct sockaddr_un));
@@ -92,6 +97,8 @@ bool ufa_jsonrpc_api_settag(ufa_jsonrpc_api_t *api,
 			    const char *tag,
 			    struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	bool result = false;
 
 	const char *str_json =
@@ -121,6 +128,8 @@ struct ufa_list *ufa_jsonrpc_api_listtags(ufa_jsonrpc_api_t *api,
 					  const char *repodir,
 					  struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	struct ufa_list *result = NULL;
 
 	const char *str_json = "{"
@@ -154,6 +163,8 @@ bool ufa_jsonrpc_api_gettags(ufa_jsonrpc_api_t *api,
 			     struct ufa_list **list,
 			     struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	bool result = false;
 
 	const char *str_json = "{"
@@ -191,6 +202,8 @@ int ufa_jsonrpc_api_inserttag(ufa_jsonrpc_api_t *api,
 			      const char *tag,
 			      struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, -1);
+
 	long id_tag = -1;
 	const char *str_json =
 	    "{"
@@ -227,6 +240,8 @@ bool ufa_jsonrpc_api_cleartags(ufa_jsonrpc_api_t *api,
 			       const char *filepath,
 			       struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	bool result = false;
 
 	char *str_json = "{"
@@ -260,6 +275,8 @@ bool ufa_jsonrpc_api_unsettag(ufa_jsonrpc_api_t *api,
 			      const char *tag,
 			      struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	bool result = false;
 
 	const char *str_json =
@@ -294,6 +311,8 @@ bool ufa_jsonrpc_api_setattr(ufa_jsonrpc_api_t *api,
 			     const char *value,
 			     struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	bool result = false;
 
 	const char *str_json = "{"
@@ -330,6 +349,8 @@ struct ufa_list *ufa_jsonrpc_api_getattr(ufa_jsonrpc_api_t *api,
 					 const char *filepath,
 					 struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	struct ufa_list *result = NULL;
 
 	const char *str_json = "{"
@@ -376,6 +397,8 @@ bool ufa_jsonrpc_api_unsetattr(ufa_jsonrpc_api_t *api,
 			       const char *attribute,
 			       struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	bool result = false;
 
 	const char *str_json = "{"
@@ -412,6 +435,8 @@ struct ufa_list *ufa_jsonrpc_api_search(ufa_jsonrpc_api_t *api,
 					bool include_repo_from_config,
 					struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	struct ufa_list *result = NULL;
 
 	// Dynamic allocated variables
@@ -479,6 +504,10 @@ end:
 
 void ufa_jsonrpc_api_close(ufa_jsonrpc_api_t *api, struct ufa_error **error)
 {
+	ufa_return_if(api == NULL);
+
+	close(api->socket_fd);
+	ufa_free(api);
 	ufa_debug("Closing JSRON-RPC API");
 }
 
@@ -514,6 +543,8 @@ static bool request_jsonrpc(ufa_jsonrpc_api_t *api,
 			    struct ufa_jsonrpc **jsonrpc,
 			    struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	char response[MAX_RESPONSE_SIZE] = "";
 	request_socket(api, msg, response);
 

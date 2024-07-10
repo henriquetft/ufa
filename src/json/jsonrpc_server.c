@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* Copyright (c) 2023-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of UFA JSON-RPC server.                                     */
@@ -84,6 +84,8 @@ ufa_jsonrpc_server_t *ufa_jsonrpc_server_new()
 void ufa_jsonrpc_server_start(ufa_jsonrpc_server_t *server,
 			      struct ufa_error **error)
 {
+	ufa_return_iferror(error);
+
 	if (server) {
 		jsonrpc_server(&server->socket_fd);
 	}
@@ -92,6 +94,8 @@ void ufa_jsonrpc_server_start(ufa_jsonrpc_server_t *server,
 void ufa_jsonrpc_server_stop(ufa_jsonrpc_server_t *server,
 			     struct ufa_error **error)
 {
+	ufa_return_iferror(error);
+
 	shutdown(server->socket_fd, SHUT_RDWR);
 	close(server->socket_fd);
 	// FIXME check errors
