@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2022-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of ufaattr command line utility.                            */
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
 	global_argv = argv;
 
 	int opt;
-
+	struct ufa_error *err_api = NULL;
 	bool error_usage = false;
 	int exit_status = EX_OK;
 	int r = 0, log = 0;
@@ -286,7 +286,6 @@ int main(int argc, char *argv[])
 	}
 
 	// Start JSON RPC API
-	struct ufa_error *err_api = NULL;
 	api = ufa_jsonrpc_api_init(&err_api);
 	ufa_error_exit(err_api, EX_UNAVAILABLE);
 
