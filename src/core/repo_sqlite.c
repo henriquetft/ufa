@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2021-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of repo module (repo.h) using sqlite3.                      */
@@ -94,52 +94,52 @@ const static char *ufa_repo_matchmode_sql[] = {
 /* AUXILIARY FUNCTIONS - DECLARATION                                          */
 /* ========================================================================== */
 
-bool _db_prepare(ufa_repo_t *repo, sqlite3_stmt **stmt, const char *sql,
+bool _db_prepare(const ufa_repo_t *repo, sqlite3_stmt **stmt, const char *sql,
 		 struct ufa_error **error, const char *func_name);
 
-static bool _db_execute(ufa_repo_t *repo, sqlite3_stmt *stmt,
+static bool _db_execute(const ufa_repo_t *repo, sqlite3_stmt *stmt,
 			struct ufa_error **error, const char *func_name);
 
 static void db_begin(ufa_repo_t *repo);
-static void db_commit(ufa_repo_t *repo);
+static void db_commit(const ufa_repo_t *repo);
 static char *sql_arg_list(struct ufa_list *list);
 
 static struct ufa_repo *open_sqlite_conn(const char *file,
 					 const char *repo_path,
 					 struct ufa_error **error);
 
-static int get_tag_id_by_name(ufa_repo_t *repo,
+static int get_tag_id_by_name(const ufa_repo_t *repo,
 			      const char *tag,
 			      struct ufa_error **error);
 
-static struct ufa_list *get_tags_for_files_excluding(ufa_repo_t *repo,
+static struct ufa_list *get_tags_for_files_excluding(const ufa_repo_t *repo,
 						     struct ufa_list *file_ids,
 						     struct ufa_list *tags,
 						     struct ufa_error **error);
 
-static struct ufa_list *get_files_with_tags(ufa_repo_t *repo,
+static struct ufa_list *get_files_with_tags(const ufa_repo_t *repo,
 					    struct ufa_list *tags,
 					    struct ufa_error **error);
 
-static sqlite_int64 insert_tag(ufa_repo_t *repo, const char *tag);
-static bool insert_db_version(ufa_repo_t *repo);
+static sqlite_int64 insert_tag(const ufa_repo_t *repo, const char *tag);
+static bool insert_db_version(const ufa_repo_t *repo);
 
-static int insert_file(ufa_repo_t *repo,
+static int insert_file(const ufa_repo_t *repo,
 		       const char *filename,
 		       struct ufa_error **error);
 
-static int get_file_id_by_name(ufa_repo_t *repo,
+static int get_file_id_by_name(const ufa_repo_t *repo,
 			       const char *filename,
 			       struct ufa_error **error);
 
-static bool set_tag_on_file(ufa_repo_t *repo,
+static bool set_tag_on_file(const ufa_repo_t *repo,
 			    int file_id,
 			    int tag_id,
 			    struct ufa_error **error);
 
 static void create_repo_indicator_file(const char *repo,
 				       struct ufa_error **error);
-static int get_file_id(ufa_repo_t *repo,
+static int get_file_id(const ufa_repo_t *repo,
 		       const char *filepath,
 		       struct ufa_error **error);
 
@@ -152,8 +152,9 @@ static char *generate_sql_search_tags(struct ufa_list *tags);
 
 ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error)
 {
-	char *repo_abs = NULL;
+	char *repo_abs   = NULL;
 	ufa_repo_t *repo = NULL;
+	ufa_goto_iferror(error, end);
 
 	repo_abs = ufa_util_abspath(repository);
 	if (!ufa_util_isdir(repo_abs)) {
@@ -170,17 +171,21 @@ ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error)
 	}
 	ufa_free(repo_abs);
 	ufa_free(filepath);
+end:
 	return repo;
 }
 
-char *ufa_repo_getrepopath(ufa_repo_t *repo)
+char *ufa_repo_getrepopath(const ufa_repo_t *repo)
 {
 	ufa_return_val_ifnot(repo, NULL);
 	return ufa_str_dup(repo->repository_path);
 }
 
-struct ufa_list *ufa_repo_listtags(ufa_repo_t *repo, struct ufa_error **error)
+struct ufa_list *ufa_repo_listtags(const ufa_repo_t *repo,
+                                   struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	// FIXME check repo null
 	struct ufa_list *all_tags = NULL;
 	int rows = 0;
@@ -218,10 +223,12 @@ sqlite_error:
 }
 
 
-bool ufa_repo_isatag(ufa_repo_t *repo,
-		     const char *path,
-		     struct ufa_error **error)
+bool ufa_repo_isatag(const ufa_repo_t *repo,
+                     const char *path,
+                     struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	char *last_part = ufa_util_getfilename(path);
 	bool ret = (ufa_repo_get_realfilepath(repo, path, NULL) == NULL &&
 		    get_tag_id_by_name(repo, last_part, error) > 0);
@@ -229,9 +236,11 @@ bool ufa_repo_isatag(ufa_repo_t *repo,
 	return ret;
 }
 
-char *ufa_repo_get_realfilepath(ufa_repo_t *repo, const char *path,
-				struct ufa_error **error)
+char *ufa_repo_get_realfilepath(const ufa_repo_t *repo,
+	                            const char *path,
+				                struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
 	/* FIXME remove error? */
 	// FIXME check if filepath is in repo?
 	char *result = NULL;
@@ -252,10 +261,12 @@ char *ufa_repo_get_realfilepath(ufa_repo_t *repo, const char *path,
 	return result;
 }
 
-struct ufa_list *ufa_repo_listfiles(ufa_repo_t *repo,
-				    const char *dirpath,
+struct ufa_list *ufa_repo_listfiles(const ufa_repo_t *repo,
+                                    const char *dirpath,
 				    struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	struct ufa_list *list = NULL;
 	if (ufa_str_equals(dirpath, "/")) {
 		/* FIXME cache. it is better to clone all_tags */
@@ -274,20 +285,23 @@ struct ufa_list *ufa_repo_listfiles(ufa_repo_t *repo,
 }
 
 /* TODO use error argument and returns the list */
-bool ufa_repo_gettags(ufa_repo_t *repo,
+bool ufa_repo_gettags(const ufa_repo_t *repo,
 		      const char *filepath,
 		      struct ufa_list **list,
 		      struct ufa_error **error)
 {
 	ufa_debug("%s: '%s'", __func__, filepath);
-	bool status = false;
-	char *filename = NULL;
-	sqlite3_stmt *stmt = NULL;
+
+	bool status             = false;
+	char *filename          = NULL;
+	sqlite3_stmt *stmt      = NULL;
 	struct ufa_list *result = NULL;
+
+	ufa_goto_iferror(error, end);
 
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
-		goto end;
+		goto freeres;
 	}
 
 	filename = ufa_util_getfilename(filepath);
@@ -296,7 +310,7 @@ bool ufa_repo_gettags(ufa_repo_t *repo,
 		    "WHERE ft.id_tag = t.id AND ft.id_file=? ORDER BY t.name";
 	
 	if (!db_prepare(repo, &stmt, sql, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_int(stmt, 1, file_id);
@@ -308,19 +322,21 @@ bool ufa_repo_gettags(ufa_repo_t *repo,
 
 	status = true;
 	*list = ufa_list_reverse(result);
-end:
+freeres:
 	sqlite3_finalize(stmt);
 	ufa_free(filename);
+end:
 	return status;
 }
 
 /**
  * Negative values on error
  */
-int ufa_repo_inserttag(ufa_repo_t *repo,
-		       const char *tag,
-		       struct ufa_error **error)
+int ufa_repo_inserttag(const ufa_repo_t *repo,
+                       const char *tag,
+                       struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, -1);
 	ufa_debug("insertag: repo='%s' tag='%s'", repo->repository_path, tag);
 
 	int tag_id = get_tag_id_by_name(repo, tag, error);
@@ -337,47 +353,55 @@ int ufa_repo_inserttag(ufa_repo_t *repo,
 	return tag_id;
 }
 
-bool ufa_repo_settag(ufa_repo_t *repo, const char *filepath, const char *tag,
-		     struct ufa_error **error)
+bool ufa_repo_settag(const ufa_repo_t *repo,
+                     const char *filepath,
+                     const char *tag,
+                     struct ufa_error **error)
 {
-	ufa_debug("Setting tag '%s' for file '%s' (repo: '%s')", tag, filepath,
-		  repo->repository_path);
-
 	bool status = false;
+	ufa_goto_iferror(error, end);
+
+	ufa_debug("Setting tag '%s' for file '%s' (repo: '%s')", tag,
+		filepath, repo->repository_path);
 	char *filename = ufa_util_getfilename(filepath);
 
 	int tag_id = ufa_repo_inserttag(repo, tag, error);
+
 	if (tag_id < 0) {
-		goto end;
+		goto freeres;
 	}
 
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
-		goto end;
+		goto freeres;
+
 	}
 
 	status = set_tag_on_file(repo, file_id, tag_id, error);
-end:
+freeres:
 	ufa_free(filename);
+end:
 	return status;
 }
 
-bool ufa_repo_cleartags(ufa_repo_t *repo,
-			const char *filepath,
-			struct ufa_error **error)
+bool ufa_repo_cleartags(const ufa_repo_t *repo,
+                        const char *filepath,
+                        struct ufa_error **error)
 {
 	int r = 0;
 	bool status = false;
 	sqlite3_stmt *stmt = NULL;
-	char *sql = "DELETE FROM file_tag WHERE id_file=?";
+	const char *sql = "DELETE FROM file_tag WHERE id_file=?";
+
+	ufa_goto_iferror(error, end);
 
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
-		goto end;
+		goto freeres;
 	}
 
 	if (!db_prepare(repo, &stmt, sql, NULL)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_int(stmt, 1, file_id);
@@ -385,44 +409,46 @@ bool ufa_repo_cleartags(ufa_repo_t *repo,
 	r = sqlite3_step(stmt);
 	if (r != SQLITE_DONE) {
 		fprintf(stderr, "sqlite error: %d\n", r);
-		goto end;
+		goto freeres;
 	}
 	status = true;
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return status;
 }
 
-bool ufa_repo_unsettag(ufa_repo_t *repo,
-		       const char *filepath,
-		       const char *tag,
-		       struct ufa_error **error)
+bool ufa_repo_unsettag(const ufa_repo_t *repo,
+                       const char *filepath,
+                       const char *tag,
+                       struct ufa_error **error)
 {
 	bool status = 0;
 	sqlite3_stmt *stmt = NULL;
-	char *sql_delete = "DELETE FROM file_tag WHERE id_file = ? AND id_tag "
-			   "= (SELECT t.id FROM tag"
-			   " t WHERE t.name = ?)";
-
+	const char *sql_delete = "DELETE FROM file_tag WHERE id_file = ? AND "
+	                         " id_tag = (SELECT t.id FROM tag"
+	                         " t WHERE t.name = ?)";
+	ufa_goto_iferror(error, end);
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
-		goto end;
+		goto freeres;
 	}
 
 	if (!db_prepare(repo, &stmt, sql_delete, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_int(stmt, 1, file_id);
 	sqlite3_bind_text(stmt, 2, tag, -1, NULL);
 
 	if (!db_execute(repo, stmt, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	status = true;
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return status;
 }
 
@@ -446,8 +472,8 @@ void ufa_repo_filterattr_free(struct ufa_repo_filterattr *filter)
 	}
 }
 
-struct ufa_list *ufa_repo_search(ufa_repo_t *repo,
-				 struct ufa_list *filter_attr,
+struct ufa_list *ufa_repo_search(const ufa_repo_t *repo,
+                                 struct ufa_list *filter_attr,
 				 struct ufa_list *tags,
 				 struct ufa_error **error)
 {
@@ -456,6 +482,8 @@ struct ufa_list *ufa_repo_search(ufa_repo_t *repo,
 		  ((struct ufa_repo *) repo)->repository_path);
 
 	struct ufa_list *result_list_names = NULL;
+
+	ufa_goto_iferror(error, end);
 
 	int count_tags = ufa_list_size(tags);
 	int count_attrs = ufa_list_size(filter_attr);
@@ -492,7 +520,7 @@ struct ufa_list *ufa_repo_search(ufa_repo_t *repo,
 
 	sqlite3_stmt *stmt = NULL;
 	if (!db_prepare(repo, &stmt, full_sql, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	// filling tag parameters
@@ -539,16 +567,17 @@ struct ufa_list *ufa_repo_search(ufa_repo_t *repo,
 						     ufa_free);
 	}
 
-end:
+freeres:
 	sqlite3_finalize(stmt);
 	free(sql_search_tags);
 	free(sql_search_attrs);
 	free(full_sql);
 	ufa_debug("Search result: %p", result_list_names);
+end:
 	return result_list_names;
 }
 
-bool ufa_repo_setattr(ufa_repo_t *repo,
+bool ufa_repo_setattr(const ufa_repo_t *repo,
 		      const char *filepath,
 		      const char *attribute,
 		      const char *value,
@@ -556,20 +585,22 @@ bool ufa_repo_setattr(ufa_repo_t *repo,
 {
 	sqlite3_stmt *stmt = NULL;
 	bool status = false;
-	char *sql =
+	const char *sql =
 	    "INSERT OR REPLACE INTO attribute(id, id_file, name, value) "
 	    "VALUES((SELECT id FROM attribute WHERE id_file=? AND name=?), ?, "
 	    "?, ?)";
 
+	ufa_goto_iferror(error, end);
+
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
-		goto end;
+		goto freeres;
 	}
 
 	ufa_debug("SQL for function '%s': %s", __func__, sql);
 
 	if (!db_prepare(repo, &stmt, sql, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_int(stmt, 1, file_id);
@@ -579,43 +610,46 @@ bool ufa_repo_setattr(ufa_repo_t *repo,
 	sqlite3_bind_text(stmt, 5, value, -1, NULL);
 
 	if (!db_execute(repo, stmt, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	status = true;
 
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return status;
 }
 
 
 
-bool ufa_repo_unsetattr(ufa_repo_t *repo,
+bool ufa_repo_unsetattr(const ufa_repo_t *repo,
 			const char *filepath,
 			const char *attribute,
-			 struct ufa_error **error)
+			struct ufa_error **error)
 {
 	sqlite3_stmt *stmt = NULL;
 	bool status = false;
-	char *sql = "DELETE from attribute WHERE id_file=? AND name=?";
+	const char *sql = "DELETE from attribute WHERE id_file=? AND name=?";
+
+	ufa_goto_iferror(error, end);
 
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
-		goto end;
+		goto freeres;
 	}
 
 	ufa_debug("SQL for function '%s': %s", __func__, sql);
 
 	if (!db_prepare(repo, &stmt, sql, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_int(stmt, 1, file_id);
 	sqlite3_bind_text(stmt, 2, attribute, -1, NULL);
 
 	if (!db_execute(repo, stmt, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	int affected = sqlite3_changes(repo->db);
@@ -623,28 +657,31 @@ bool ufa_repo_unsetattr(ufa_repo_t *repo,
 
 	status = true;
 
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return status;
 }
 
-struct ufa_list *ufa_repo_getattr(ufa_repo_t *repo,
+struct ufa_list *ufa_repo_getattr(const ufa_repo_t *repo,
 				  const char *filepath,
 				  struct ufa_error **error)
 {
 	struct ufa_list *result_list_attrs = NULL;
 	sqlite3_stmt *stmt = NULL;
-	char *sql = "SELECT name,value FROM attribute WHERE id_file=?";
+	const char *sql = "SELECT name,value FROM attribute WHERE id_file=?";
+
+	ufa_goto_iferror(error, end);
 
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
-		goto end;
+		goto freeres;
 	}
 
 	ufa_debug("SQL for function '%s': %s", __func__, sql);
 
 	if (!db_prepare(repo, &stmt, sql, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_int(stmt, 1, file_id);
@@ -663,8 +700,9 @@ struct ufa_list *ufa_repo_getattr(ufa_repo_t *repo,
 				     (ufa_list_free_fn_t) ufa_repo_attr_free);
 	}
 
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return result_list_attrs;
 }
 
@@ -689,6 +727,7 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 
 	char *repository = NULL;
 
+	ufa_goto_iferror(error, end);
 
 	// Get dir
 	if (ufa_util_isdir(filepath)) {
@@ -698,7 +737,7 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 	} else {
 		ufa_error_new(error, UFA_ERROR_FILE,
 			      "%s is not a file", filepath);
-		goto end;
+		goto freeres;
 	}
 
 
@@ -714,7 +753,7 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 			repository = ufa_str_dup(line);
 		} else {
 			perror("fgets"); // FIXME
-			goto end;
+			goto freeres;
 		}
 	} else {
 		// OR try get repo .db file
@@ -728,10 +767,10 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 	if (repository == NULL) {
 		ufa_error_new(error, UFA_ERROR_FILE,
 			      "not found repo for: %s", filepath);
-		goto end;
+		goto freeres;
 	}
 
-end:
+freeres:
 	if (file_read != NULL) {
 		fclose(file_read);
 	}
@@ -739,6 +778,7 @@ end:
 	ufa_free(dirname);
 	ufa_free(repodb_file);
 	ufa_free(repo_ind_file);
+end:
 	return repository;
 }
 
@@ -768,13 +808,15 @@ bool ufa_repo_isrepo(char *directory)
 	return ret;
 }
 
-bool ufa_repo_removefile(ufa_repo_t *repo,
+bool ufa_repo_removefile(const ufa_repo_t *repo,
 			 const char *filepath,
 			 struct ufa_error **error)
 {
 	sqlite3_stmt *stmt = NULL;
 	bool status = false;
-	char *sql = "DELETE FROM file WHERE id=?";
+	const char *sql = "DELETE FROM file WHERE id=?";
+
+	ufa_goto_iferror(error, end);
 
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
@@ -798,7 +840,7 @@ end:
 }
 
 
-bool ufa_repo_renamefile(ufa_repo_t *repo,
+bool ufa_repo_renamefile(const ufa_repo_t *repo,
 			 const char *oldfilepath,
 			 const char *newfilepath,
 			 struct ufa_error **error)
@@ -808,13 +850,15 @@ bool ufa_repo_renamefile(ufa_repo_t *repo,
 	const char *sql    = "UPDATE file SET name=? WHERE id=?";
 	bool status        = false;
 
+	ufa_goto_iferror(error, end);
+
 	int file_id;
 	if (!(file_id = get_file_id(repo, oldfilepath, error))) {
-		goto end;
+		goto freeres;
 	}
 
 	if (!db_prepare(repo, &stmt, sql, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	new_filename = ufa_util_getfilename(newfilepath);
@@ -822,15 +866,16 @@ bool ufa_repo_renamefile(ufa_repo_t *repo,
 	sqlite3_bind_int(stmt, 2, file_id);
 
 	if (!db_execute(repo, stmt, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	int affected = sqlite3_changes(repo->db);
 	status = (affected == 1);
 
-end:
+freeres:
 	ufa_free(new_filename);
 	sqlite3_finalize(stmt);
+end:
 	return status;
 }
 
@@ -839,10 +884,12 @@ end:
 /* AUXILIARY FUNCTIONS                                                        */
 /* ========================================================================== */
 
-bool _db_prepare(ufa_repo_t *repo, sqlite3_stmt **stmt, const char *sql,
+bool _db_prepare(const ufa_repo_t *repo, sqlite3_stmt **stmt, const char *sql,
 		 struct ufa_error **error, const char *func_name)
 {
 	assert(repo != NULL);
+	ufa_return_val_iferror(error, false);
+
 	int prepare_ret = sqlite3_prepare_v2(repo->db, sql, -1, stmt, NULL);
 	if (prepare_ret != SQLITE_OK) {
 		ufa_error_new(error, UFA_ERROR_DATABASE,
@@ -853,9 +900,11 @@ bool _db_prepare(ufa_repo_t *repo, sqlite3_stmt **stmt, const char *sql,
 	return true;
 }
 
-static bool _db_execute(ufa_repo_t *repo, sqlite3_stmt *stmt,
+static bool _db_execute(const ufa_repo_t *repo, sqlite3_stmt *stmt,
 			struct ufa_error **error, const char *func_name)
 {
+	ufa_return_val_iferror(error, false);
+
 	bool status = true;
 	int r = sqlite3_step(stmt);
 	if (r != SQLITE_DONE) {
@@ -880,7 +929,7 @@ static void db_begin(ufa_repo_t *repo)
 	}
 }
 
-static void db_commit(ufa_repo_t *repo)
+static void db_commit(const ufa_repo_t *repo)
 {
 	int status = sqlite3_exec(repo->db, "COMMIT;", NULL, NULL, NULL);
 	if (status != SQLITE_OK) {
@@ -917,6 +966,8 @@ static struct ufa_repo *open_sqlite_conn(const char *file,
 					 const char *repo_path,
 					 struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	char *errmsg = NULL;
 	struct ufa_repo *repo = ufa_malloc(sizeof *repo);
 	// create file if it do not exist
@@ -970,17 +1021,19 @@ error_create_table:
  * Gets the tag id for a tag name
  * Returns negative values on error; 0 for tag not found; id of a tag when found
  */
-static int get_tag_id_by_name(ufa_repo_t *repo,
+static int get_tag_id_by_name(const ufa_repo_t *repo,
 			      const char *tag,
 			      struct ufa_error **error)
 {
 	int tag_id = 0;
 	sqlite3_stmt *stmt = NULL;
-	char *sql = "SELECT t.id FROM tag t WHERE t.name = ?";
+	const char *sql = "SELECT t.id FROM tag t WHERE t.name = ?";
+
+	ufa_goto_iferror(error, end);
 
 	if (!db_prepare(repo, &stmt, sql, error)) {
 		tag_id = -1;
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_text(stmt, 1, tag, -1, NULL);
@@ -988,8 +1041,9 @@ static int get_tag_id_by_name(ufa_repo_t *repo,
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		tag_id = sqlite3_column_int(stmt, 0);
 	}
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return tag_id;
 }
 
@@ -997,14 +1051,13 @@ end:
  * Retrieves all tags for a list of files, excluding the list of tags passed
  * as argument.
  */
-static struct ufa_list *get_tags_for_files_excluding(ufa_repo_t *repo,
+static struct ufa_list *get_tags_for_files_excluding(const ufa_repo_t *repo,
 						     struct ufa_list *file_ids,
 						     struct ufa_list *tags,
 						     struct ufa_error **error)
 {
-	if (file_ids == NULL) {
-		return NULL;
-	}
+	ufa_return_val_iferror(error, NULL);
+	ufa_return_val_if(file_ids == NULL, NULL);
 
 	char *sql = "SELECT DISTINCT t.name FROM tag t, file_tag ft, file f "
 		    "WHERE ft.id_tag "
@@ -1045,10 +1098,12 @@ end:
 	return result;
 }
 
-static struct ufa_list *get_files_with_tags(ufa_repo_t *repo,
+static struct ufa_list *get_files_with_tags(const ufa_repo_t *repo,
 					    struct ufa_list *tags,
 					    struct ufa_error **error)
 {
+	ufa_goto_iferror(error, end);
+
 	struct ufa_list *list = NULL;
 	struct ufa_list *result = NULL;
 	struct ufa_list *file_ids = NULL;
@@ -1069,7 +1124,7 @@ static struct ufa_list *get_files_with_tags(ufa_repo_t *repo,
 
 	sqlite3_stmt *stmt = NULL;
 	if (!db_prepare(repo, &stmt, full_sql, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	int x = 1;
@@ -1098,7 +1153,7 @@ static struct ufa_list *get_files_with_tags(ufa_repo_t *repo,
 								   tags,
 								   error);
 	if (error && *error) {
-		goto end;
+		goto freeres;
 	}
 
 	list = ufa_list_reverse(list);
@@ -1106,15 +1161,16 @@ static struct ufa_list *get_files_with_tags(ufa_repo_t *repo,
 		ufa_list_get_last(list)->next = other_tags;
 	}
 	result = list;
-end:
+freeres:
 	sqlite3_finalize(stmt);
 	ufa_list_free_full(file_ids, ufa_free);
 	ufa_free(sql_args);
 	ufa_free(full_sql);
+end:
 	return result;
 }
 
-static sqlite_int64 insert_tag(ufa_repo_t *repo, const char *tag)
+static sqlite_int64 insert_tag(const ufa_repo_t *repo, const char *tag)
 {
 	sqlite_int64 id_tag = -1;
 	sqlite3_stmt *stmt = NULL;
@@ -1138,7 +1194,7 @@ end:
 	return id_tag;
 }
 
-static bool insert_db_version(ufa_repo_t *repo)
+static bool insert_db_version(const ufa_repo_t *repo)
 {
 	bool ret = false;
 
@@ -1163,15 +1219,18 @@ end:
 
 }
 
-static int insert_file(ufa_repo_t *repo,
+static int insert_file(const ufa_repo_t *repo,
 		       const char *filename,
 		       struct ufa_error **error)
 {
 	sqlite_int64 id_file = -1;
 	sqlite3_stmt *stmt = NULL;
-	char *sql_insert = "INSERT INTO file (name) values(?)";
+	const char *sql_insert = "INSERT INTO file (name) values(?)";
+
+	ufa_goto_iferror(error, end);
+
 	if (!db_prepare(repo, &stmt, sql_insert, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_text(stmt, 1, filename, -1, NULL);
@@ -1179,29 +1238,32 @@ static int insert_file(ufa_repo_t *repo,
 	// FIXME use db_execute ?
 	if (r != SQLITE_DONE) {
 		fprintf(stderr, "sqlite error: %d\n", r);
-		goto end;
+		goto freeres;
 	}
 	id_file = sqlite3_last_insert_rowid(repo->db);
 	ufa_debug("File inserted: %lld\n", id_file);
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return id_file;
 }
 
-static int get_file_id_by_name(ufa_repo_t *repo,
+static int get_file_id_by_name(const ufa_repo_t *repo,
 			       const char *filename,
 			       struct ufa_error **error)
 {
 	ufa_debug("%s: %s", __func__, filename);
 
-	const char *sql = "SELECT f.id FROM file f WHERE f.name = ?";
-	char *filepath  = NULL;
-	int file_id     = 0;
-
+	const char *sql    = "SELECT f.id FROM file f WHERE f.name = ?";
+	char *filepath     = NULL;
+	int file_id        = 0;
 	sqlite3_stmt *stmt = NULL;
+
+	ufa_goto_iferror(error, end);
+
 	if (!db_prepare(repo, &stmt, sql, error)) {
 		file_id = -1;
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_text(stmt, 1, filename, -1, NULL);
@@ -1221,28 +1283,31 @@ static int get_file_id_by_name(ufa_repo_t *repo,
 			file_id = insert_file(repo, filename, error);
 			if (file_id == -1) {
 				ufa_error("Error inserting on db, file '%s'");
-				goto end;
+				goto freeres;
 			}
 		}
 	}
-end:
+freeres:
 	ufa_free(filepath);
 	sqlite3_finalize(stmt);
+end:
 	return file_id;
 }
 
-static bool set_tag_on_file(ufa_repo_t *repo,
+static bool set_tag_on_file(const ufa_repo_t *repo,
 			    int file_id,
 			    int tag_id,
 			    struct ufa_error **error)
 {
 	bool status = false;
-	char *sql_insert =
+	const char *sql_insert =
 	    "INSERT INTO file_tag (id_file, id_tag) VALUES (?, ?)";
-
 	sqlite3_stmt *stmt = NULL;
+
+	ufa_goto_iferror(error, end);
+
 	if (!db_prepare(repo, &stmt, sql_insert, error)) {
-		goto end;
+		goto freeres;
 	}
 
 	sqlite3_bind_int(stmt, 1, file_id);
@@ -1259,16 +1324,19 @@ static bool set_tag_on_file(ufa_repo_t *repo,
 	} else {
 		ufa_error_new(error, UFA_ERROR_DATABASE,
 			      "Sqlite returned on insert file_tag: %d", r);
-		goto end;
+		goto freeres;
 	}
-end:
+freeres:
 	sqlite3_finalize(stmt);
+end:
 	return status;
 }
 
 static void create_repo_indicator_file(const char *repo,
 				       struct ufa_error **error)
 {
+	ufa_return_iferror(error);
+
 	char *repository = ufa_util_abspath(repo);
 	char *filepath = ufa_util_joinpath(repository,
 					   REPOSITORY_INDICATOR_FILE_NAME,
@@ -1282,43 +1350,47 @@ static void create_repo_indicator_file(const char *repo,
 			      "error openning '%s': %s\n",
 			      filepath,
 			      strerror(errno));
-		goto end;
+		goto freeres;
 	}
 	fprintf(fp, "%s", repository);
 	fclose(fp);
-end:
+freeres:
 	ufa_free(repository);
 	ufa_free(filepath);
 }
 
-static int get_file_id(ufa_repo_t *repo,
+static int get_file_id(const ufa_repo_t *repo,
 		       const char *filepath,
 		       struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, 0);
+
 	char *filename = NULL;
 
 	filename = ufa_util_getfilename(filepath);
 	int file_id = get_file_id_by_name(repo, filename, error);
 	if (file_id < 0) {
 		file_id = 0;
-		goto end;
+		goto freeres;
 	} else if (file_id == 0) {
 		ufa_error_new(error, UFA_ERROR_FILE_NOT_IN_DB,
 			      "file '%s' does not exist in DB", filename);
 	}
-end:
+freeres:
 	ufa_free(filename);
 	return file_id;
 }
 
 static char *generate_sql_search_attrs(struct ufa_list *filter_attr)
 {
+	const size_t MAX_LEN = 4096;
+
 	int count_list = ufa_list_size(filter_attr);
 	if (count_list == 0) {
 		return ufa_str_dup("");
 	}
-	// FIXME
-	size_t len_str = count_list * 255 * sizeof(char);
+
+	size_t len_str = count_list * MAX_LEN * sizeof(char);
 	char *new_str = ufa_malloc(len_str);
 	new_str[0] = '\0';
 	const char *sql_with_value = "(a.name = ? AND a.value %s ?)";
@@ -1328,19 +1400,23 @@ static char *generate_sql_search_attrs(struct ufa_list *filter_attr)
 
 		if (((struct ufa_repo_filterattr *) iter_attr->data)->value ==
 		    NULL) {
-			strcat(new_str, sql_without_value);
+			strncat(new_str,
+				sql_without_value,
+				MAX_LEN - strlen(new_str) - 1);
 		} else {
 			char *str = ufa_str_sprintf(
 			    sql_with_value,
 			    ufa_repo_matchmode_sql[
 				((struct ufa_repo_filterattr *)
 				     iter_attr->data)->matchmode]);
-			strcat(new_str, str);
+			strncat(new_str, str, MAX_LEN - strlen(new_str) - 1);
 			ufa_free(str);
 		}
 
 		if (iter_attr->next != NULL) {
-			strcat(new_str, " OR ");
+			strncat(new_str,
+				" OR ",
+				MAX_LEN - strlen(new_str) - 1);
 		}
 	}
 
