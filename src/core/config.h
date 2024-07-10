@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2022-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Definitions for UFA configuration mechanism.                               */
@@ -22,7 +22,7 @@
 
 /**
  * Read config file (DIRS_FILE_NAME) and get all valid (existing)
- * directories listed.
+ * listed directories.
  *
  * @param reload Reload from file or use the last result
  * @param error pointer to pointer to error structure
@@ -37,7 +37,7 @@ struct ufa_list *ufa_config_dirs(bool reload, struct ufa_error **error);
  *
  * @param dir New directory to watch
  * @param error Pointer to pointer to error structure
- * @return
+ * @return true whether dir was successfully added; false otherwise
  */
 bool ufa_config_add_dir(const char *dir, struct ufa_error **error);
 
@@ -47,7 +47,7 @@ bool ufa_config_add_dir(const char *dir, struct ufa_error **error);
  *
  * @param dir Directory to remove
  * @param error Pointer to pointer to error structure
- * @return
+ * @return true whether dir was successfully removed; false otherwise
  */
 bool ufa_config_remove_dir(const char *dir, struct ufa_error **error);
 

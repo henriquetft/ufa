@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2022-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* UFA configuration mechanism (implementation of config.h).                  */
@@ -38,21 +38,25 @@ static void write_config(const struct ufa_list *list, struct ufa_error **error);
 
 struct ufa_list *ufa_config_dirs(bool reload, struct ufa_error **error)
 {
-	pthread_mutex_lock(&global_mutex);
-
+	struct ufa_list *ret  = NULL;
 	struct ufa_list *list = NULL;
 	const size_t MAX_LINE = 1024;
+	char *dirs_file       = NULL;
+	FILE *file            = NULL;
+
 	char linebuf[MAX_LINE];
-	char *dirs_file = NULL;
-	FILE *file = NULL;
+
+	ufa_goto_iferror(error, end);
+
+	pthread_mutex_lock(&global_mutex);
 
 	if (global_dirlist && !reload) {
 		list = global_dirlist;
-		goto end;
+		goto freeres;
 	}
 
 	if (!check_and_create_config_dir(error)) {
-		goto end;
+		goto freeres;
 	}
 
 	dirs_file = get_config_dirs_filepath();
@@ -62,7 +66,7 @@ struct ufa_list *ufa_config_dirs(bool reload, struct ufa_error **error)
 	if (file == NULL) {
 		// FIXME create ufa_error
 		perror("fopen");
-		goto end;
+		goto freeres;
 	}
 
 	while (fgets(linebuf, MAX_LINE, file)) {
@@ -81,7 +85,7 @@ struct ufa_list *ufa_config_dirs(bool reload, struct ufa_error **error)
 
 	list = ufa_list_reverse(list);
 
-end:
+freeres:
 	if (file) {
 		fclose(file);
 	}
@@ -89,29 +93,32 @@ end:
 	global_dirlist = list;
 	pthread_mutex_unlock(&global_mutex);
 
-	struct ufa_list *ret = ufa_list_clone(
+	ret = ufa_list_clone(
 	    global_dirlist, (ufa_list_cpydata_fn_t) ufa_str_dup, ufa_free);
+end:
 	return ret;
 }
 
 bool ufa_config_add_dir(const char *dir, struct ufa_error **error)
 {
-	bool ret = false;
-	char *normdir = NULL;
+	bool ret              = false;
+	char *normdir         = NULL;
 	struct ufa_list *dirs = NULL;
+
+	ufa_goto_iferror(error, freeres);
 
 	pthread_mutex_lock(&global_mutex);
 
 	dirs = ufa_config_dirs(true, error);
 
-	if_goto(HAS_ERROR(error), end);
+	ufa_goto_iferror(error, end);
 
 	normdir = ufa_util_abspath(dir);
 	bool isdir = ufa_util_isdir(normdir);
 	ufa_debug("DIR abspath: (%s)", normdir);
 	ufa_debug("IS DIR: %d", isdir);
 	if (!isdir) {
-		ufa_error_new(error, UFA_ERROR_FILE, "'%s' is not a dir", dir);
+		ufa_error_new(error, UFA_ERROR_NOTDIR, "'%s' is not a dir", dir);
 		goto end;
 	}
 
@@ -123,14 +130,15 @@ bool ufa_config_add_dir(const char *dir, struct ufa_error **error)
 		ufa_debug("Adding dir to config: %s", normdir);
 		dirs = ufa_list_append2(dirs, ufa_str_dup(normdir), ufa_free);
 		write_config(dirs, error);
-		if_goto(HAS_ERROR(error), end);
+		ufa_goto_iferror(error, freeres);
 	}
 
 	ret = true;
-end:
+freeres:
 	ufa_free(normdir);
 	ufa_list_free(dirs);
 	pthread_mutex_unlock(&global_mutex);
+end:
 	return ret;
 }
 
@@ -138,14 +146,16 @@ bool ufa_config_remove_dir(const char *dir, struct ufa_error **error)
 {
 	ufa_debug("Removing dir '%s'", dir);
 
-	char *dirs_file = NULL;
-	bool ret = false;
+	char *dirs_file       = NULL;
+	bool ret              = false;
 	struct ufa_list *dirs = NULL;
+
+	ufa_goto_iferror(error, end);
 
 	pthread_mutex_lock(&global_mutex);
 
 	dirs = ufa_config_dirs(true, error);
-	if_goto(HAS_ERROR(error), end);
+	ufa_goto_iferror(error, freeres);
 
 	dirs_file = get_config_dirs_filepath();
 	ufa_info("Reading config file %s", dirs_file);
@@ -163,12 +173,13 @@ bool ufa_config_remove_dir(const char *dir, struct ufa_error **error)
 	ufa_list_free(element);
 	global_dirlist = dirs;
 	write_config(dirs, error);
-	if_goto(HAS_ERROR(error), end);
+	ufa_goto_iferror(error, freeres);
 
 	ret = true;
-end:
+freeres:
 	pthread_mutex_unlock(&global_mutex);
 	ufa_free(dirs_file);
+end:
 	return ret;
 }
 
@@ -197,7 +208,7 @@ end:
 
 static char *get_config_dirs_filepath()
 {
-	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
+	char *cfg_dir   = ufa_util_config_dir(CONFIG_DIR_NAME);
 	char *dirs_file = ufa_util_joinpath(cfg_dir, DIRS_FILE_NAME, NULL);
 	ufa_free(cfg_dir);
 	return dirs_file;
@@ -205,10 +216,12 @@ static char *get_config_dirs_filepath()
 
 static bool check_and_create_config_dir(struct ufa_error **error)
 {
-	bool ret = false;
-	char *dirs_file = NULL;
-	char *cfg_dir = NULL;
-	FILE *out = NULL;
+	ufa_return_val_iferror(error, false);
+
+	bool ret           = false;
+	char *dirs_file    = NULL;
+	char *cfg_dir      = NULL;
+	FILE *out          = NULL;
 	char *base_cfg_dir = NULL;
 
 	cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
@@ -217,16 +230,20 @@ static bool check_and_create_config_dir(struct ufa_error **error)
 		base_cfg_dir = ufa_util_config_dir(NULL);
 		if (ufa_util_isdir(base_cfg_dir)) {
 			ufa_debug("Creating dir '%s'", cfg_dir);
-			bool created = ufa_util_mkdir(cfg_dir, error);
+			bool created = ufa_util_mkdir(cfg_dir, NULL);
 			if (!created) {
-				goto end;
+				ufa_error_new(error,
+					      UFA_ERROR_FILE,
+					      "Could not create dir: %s",
+					      cfg_dir);
+				goto freeres;
 			}
 		} else {
 			ufa_error_new(error,
 				      UFA_ERROR_NOTDIR,
 				      "Base config dir does not exist: %s",
 				      base_cfg_dir);
-			goto end;
+			goto freeres;
 		}
 	}
 
@@ -239,36 +256,38 @@ static bool check_and_create_config_dir(struct ufa_error **error)
 				      UFA_ERROR_FILE,
 				      "Could not open file: %s",
 				      dirs_file);
-			goto end;
+			goto freeres;
 		}
 		fprintf(out, DIRS_FILE_DEFAULT_STRING);
 	}
 
 	ret = true;
 
-end:
+freeres:
 	if (out) {
 		fclose(out);
 	}
 	ufa_free(dirs_file);
 	ufa_free(cfg_dir);
 	ufa_free(base_cfg_dir);
+end:
 	return ret;
 }
 
 static void write_config(const struct ufa_list *list, struct ufa_error **error)
 {
 	ufa_return_if(list == NULL);
+	ufa_return_iferror(error);
 
 	char *dirs_file = NULL;
-	FILE *file = NULL;
+	FILE *file      = NULL;
 
 	dirs_file = get_config_dirs_filepath();
 	file = fopen(dirs_file, "w");
 	if (file == NULL) {
 		ufa_error_new(error, UFA_ERROR_FILE, "Could not open file: %s",
 			      file);
-		goto end;
+		goto freeres;
 	}
 
 	fprintf(file, DIRS_FILE_DEFAULT_STRING);
@@ -282,7 +301,7 @@ static void write_config(const struct ufa_list *list, struct ufa_error **error)
 		ufa_debug("Writing '%s' to file '%s'", dir, dirs_file);
 		fprintf(file, "%s\n", dir);
 	}
-end:
+freeres:
 	if (file != NULL) {
 		fclose(file);
 	}
