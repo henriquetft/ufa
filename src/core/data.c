@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2022-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of data functions (data.h).                                 */
@@ -41,8 +41,10 @@ static ufa_repo_t *get_repo(const char *repodir, struct ufa_error **error);
 
 bool ufa_data_init_repo(const char *repository, struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo(repository, error);
-	return repo != NULL;
+	return (repo != NULL);
 }
 
 void ufa_data_close()
@@ -54,6 +56,8 @@ bool ufa_data_gettags(const char *filepath,
 		      struct ufa_list **list,
 		      struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo_for(filepath, error);
 	if (repo == NULL) {
 		return false;
@@ -65,6 +69,8 @@ bool ufa_data_settag(const char *filepath,
 		     const char *tag,
 		     struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo_for(filepath, error);
 	if (repo == NULL) {
 		return false;
@@ -76,6 +82,8 @@ bool ufa_data_unsettag(const char *filepath,
 		       const char *tag,
 		       struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo_for(filepath, error);
 	if (repo == NULL) {
 		return false;
@@ -86,6 +94,8 @@ bool ufa_data_unsettag(const char *filepath,
 bool ufa_data_cleartags(const char *filepath,
 			struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo_for(filepath, error);
 	if (repo == NULL) {
 		return false;
@@ -98,6 +108,8 @@ int ufa_data_inserttag(const char *repodir,
 		       const char *tag,
 		       struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, -1);
+
 	int ret = -1;
 	ufa_repo_t* repo = get_repo(repodir, error);
 	if (repo == NULL) {
@@ -112,8 +124,9 @@ end:
 struct ufa_list *ufa_data_listtags(const char *repodir,
 				   struct ufa_error **error)
 {
-	struct ufa_list *ret = NULL;
+	ufa_return_val_iferror(error, NULL);
 
+	struct ufa_list *ret = NULL;
 	ufa_repo_t* repo = get_repo(repodir, error);
 	if (repo == NULL) {
 		goto end;
@@ -129,6 +142,8 @@ bool ufa_data_setattr(const char *filepath,
 		      const char *value,
 		      struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo_for(filepath, error);
 	if (repo == NULL) {
 		return false;
@@ -140,6 +155,8 @@ bool ufa_data_unsetattr(const char *filepath,
 			const char *attribute,
 			struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo_for(filepath, error);
 	if (repo == NULL) {
 		return false;
@@ -151,8 +168,9 @@ bool ufa_data_unsetattr(const char *filepath,
 struct ufa_list *ufa_data_getattr(const char *filepath,
 				  struct ufa_error **error)
 {
-	struct ufa_list *ret = NULL;
+	ufa_return_val_iferror(error, NULL);
 
+	struct ufa_list *ret = NULL;
 	ufa_repo_t *repo = get_repo_for(filepath, error);
 	if (repo == NULL) {
 		goto end;
@@ -169,6 +187,8 @@ struct ufa_list *ufa_data_search(struct ufa_list *repo_dirs,
 				 bool include_repo_from_config,
 				 struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	ufa_debug(__func__);
 
 	struct ufa_list *list_repo = NULL;
@@ -233,6 +253,8 @@ end:
 
 bool ufa_data_removefile(const char *filepath, struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	char *dir = ufa_util_dirname(filepath);
 	ufa_repo_t *repo = get_repo_for(dir, error);
 	ufa_free(dir);
@@ -246,6 +268,8 @@ bool ufa_data_renamefile(const char *oldfilepath,
 			 const char *newfilepath,
 			 struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	ufa_repo_t *repo = get_repo_for(newfilepath, error);
 	if (repo == NULL) {
 		return false;
@@ -289,6 +313,8 @@ static void init_repo_hashtable()
 
 static ufa_repo_t *get_repo(const char *repodir, struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	if (!repodir) {
 		return NULL; // TODO is this correct ?
 	}
@@ -304,6 +330,8 @@ static ufa_repo_t *get_repo(const char *repodir, struct ufa_error **error)
 
 static ufa_repo_t *get_repo_for(const char *filepath, struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, NULL);
+
 	char *s = ufa_repo_getrepofolderfor(filepath, error);
 	ufa_repo_t *ret = get_repo(s, error);
 	ufa_free(s);
