@@ -63,7 +63,7 @@ ufafs -f -s --repository=/home/user/myrepo /home/user/folder_organized_by_tags
 It is possible to integrate UFA with file managers, such as `nautilus` and `dolphin`. In `contrib` folder there is a nautilus extension that creates a context menu to help user to manage tags and attributes.
 
 ## Build and install
-I prefer to install it in $HOME directory:
+I recommend installing it in $HOME directory:
 
 ```shell
 git clone https://github.com/henriquetft/ufa.git
