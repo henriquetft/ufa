@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* Copyright (c) 2023-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Command-line utilities.                                                    */
@@ -35,6 +35,7 @@ int handle_command(char *command, size_t num_commands)
 		if (ufa_str_equals(command, commands[i])) {
 			ufa_debug("Executing command '%s'", command);
 			exit_status = handle_commands[i]();
+			break;
 		}
 	}
 	if (exit_status == EXIT_COMMAND_NOT_FOUND) {
