@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2021-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Miscellaneous utility functions (implementation of misc.h).                */
@@ -144,6 +144,8 @@ char *ufa_util_config_dir(const char *appname)
 
 bool ufa_util_mkdir(const char *dir, struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	mode_t mode = 0777;
 	if (mkdir(dir, mode) == 0) {
 		return true;
@@ -155,6 +157,8 @@ bool ufa_util_mkdir(const char *dir, struct ufa_error **error)
 
 bool ufa_util_rmdir(const char *dir, struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	if (rmdir(dir) == 0) {
 		return true;
 	}
@@ -165,6 +169,8 @@ bool ufa_util_rmdir(const char *dir, struct ufa_error **error)
 
 bool ufa_util_remove_file(const char *filepath, struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	if (remove(filepath) == 0) {
 		return true;
 	}
