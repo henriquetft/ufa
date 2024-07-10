@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2021-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of ufafind command line utility.                            */
@@ -24,6 +24,8 @@
 /* ========================================================================== */
 
 static char *match_mode_str[] = {"=", "~="};
+
+static ufa_jsonrpc_api_t *api = NULL;
 
 /* ========================================================================== */
 /* IMPLEMENTATION                                                             */
@@ -101,11 +103,11 @@ int main(int argc, char *argv[])
 	char *cwd        = NULL;
 	char *tag        = NULL;
 
-	struct ufa_list *attrs     = NULL;
-	struct ufa_list *tags      = NULL;
-	struct ufa_list *result    = NULL;
-	struct ufa_list *list_dirs = NULL;
-	struct ufa_error *err_api  = NULL;
+	struct ufa_list *attrs        = NULL;
+	struct ufa_list *tags         = NULL;
+	struct ufa_list *result       = NULL;
+	struct ufa_list *list_dirs    = NULL;
+	struct ufa_error *err_api     = NULL;
 
 	bool error_usage = false;
 	int exit_status = EX_OK;
@@ -120,7 +122,7 @@ int main(int argc, char *argv[])
 				error_usage = true;
 			} else {
 				r = 1;
-				repository = ufa_str_dup(optarg);
+				repository = ufa_util_abspath(optarg);
 			}
 			break;
 		case 'v':
@@ -166,7 +168,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Start JSON RPC API
-	ufa_jsonrpc_api_t *api = ufa_jsonrpc_api_init(&err_api);
+	api = ufa_jsonrpc_api_init(&err_api);
 	ufa_error_exit(err_api, EX_UNAVAILABLE);
 
 	if (repository != NULL) {
