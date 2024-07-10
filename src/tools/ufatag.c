@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2021-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of ufatag command line utility.                             */
@@ -13,10 +13,8 @@
 #include "util/list.h"
 #include "util/logging.h"
 #include "util/misc.h"
-#include "util/string.h"
 #include "json/jsonrpc_api.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -45,7 +43,7 @@ static int handle_create();
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
-static char *repository = NULL;
+static char *repository       = NULL;
 static ufa_jsonrpc_api_t *api = NULL;
 
 char *commands[] = {
@@ -155,11 +153,24 @@ static int handle_set()
 
 	char filepath[PATH_MAX];
 	ufa_util_abspath2(NEXT_ARG, filepath);
-	char *new_tag = NEXT_ARG;
 
-	struct ufa_error *error = NULL;
-	bool is_ok = ufa_jsonrpc_api_settag(api, filepath, new_tag, &error);
-	ufa_error_print_and_free(error);
+	bool is_ok = true;
+	while (HAS_NEXT_ARG) {
+		const char *tag = NEXT_ARG;
+		ufa_debug("Setting tag '%s' on file '%s'", filepath);
+
+		struct ufa_error *error = NULL;
+		const bool result = ufa_jsonrpc_api_settag(api, filepath, tag,
+		                                           &error);
+		ufa_error_print_and_free_prefix(error, "Unable to set tag");
+
+		if (!result) {
+			is_ok = false;
+			break;
+		}
+	}
+
+
 	return is_ok ? EX_OK : EXIT_FAILURE;
 }
 
@@ -173,13 +184,26 @@ static int handle_unset()
 
 	char filepath[PATH_MAX];
 	ufa_util_abspath2(NEXT_ARG, filepath);
-	char *tag = NEXT_ARG;
 
+	bool is_ok = true;
+	while (HAS_NEXT_ARG) {
+		const char *tag = NEXT_ARG;
+		ufa_debug("Removing tag '%s' from file '%s'", filepath);
 
-	struct ufa_error *error = NULL;
-	bool is_ok = ufa_jsonrpc_api_unsettag(api, filepath, tag, &error);
-	ufa_error_print_and_free(error);
+		struct ufa_error *error = NULL;
+		const bool result = ufa_jsonrpc_api_unsettag(api, filepath,
+		                                             tag, &error);
+		ufa_error_print_and_free_prefix(error, "Unable to unset tag");
+
+		if (!result) {
+			is_ok = false;
+			break;
+		}
+	}
+
 	return is_ok ? EX_OK : EXIT_FAILURE;
+
+
 }
 
 /* print all tags of a file */
@@ -290,7 +314,7 @@ int main(int argc, char *argv[])
 	global_argv = argv;
 
 	int opt;
-
+	struct ufa_error *err_api = NULL;
 	bool error_usage = false;
 	int exit_status = EX_OK;
 	int r = 0, log = 0;
@@ -302,7 +326,7 @@ int main(int argc, char *argv[])
 				error_usage = true;
 			} else {
 				r = 1;
-				repository = ufa_str_dup(optarg);
+				repository = ufa_util_abspath(optarg);
 			}
 			break;
 		case 'v':
@@ -352,7 +376,6 @@ int main(int argc, char *argv[])
 	}
 
 	// Start JSON-RPC API
-	struct ufa_error *err_api = NULL;
 	api = ufa_jsonrpc_api_init(&err_api);
 	ufa_error_exit(err_api, EX_UNAVAILABLE);
 
