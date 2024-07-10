@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* Copyright (c) 2023-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Test cases for JSON RPC API                                                */
@@ -740,7 +740,7 @@ START_TEST(api_search_tags_and_attrs_ok)
 							 list_tags,
 							 false,
 							 &error);
-	ufa_error_print_and_free(error);
+	ufa_error_print(error);
 	ck_assert(error == NULL);
 	ck_assert(result != NULL);
 	ck_assert_int_eq(ufa_list_size(result), 1);
