@@ -20,6 +20,9 @@
 /* VARIABLES AND DEFINITIONS                                                  */
 /* ========================================================================== */
 
+#define UFA_HASH_DEFAULT_ARRAY_SIZE    10
+#define UFA_HASH_DEFAULT_LOAD_FACTOR   0.7f
+
 /* Mapping function that unsets MSB (to prevent negatives) */
 #define MAP(hashcode, size) ((hashcode & 0x7FFFFFFF) % size)
 

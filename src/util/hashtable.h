@@ -13,9 +13,6 @@
 
 #include <stdbool.h>
 
-#define UFA_HASH_DEFAULT_ARRAY_SIZE    10
-#define UFA_HASH_DEFAULT_LOAD_FACTOR   0.7f
-
 
 typedef int (*ufa_hash_fn_t)(const void *data);
 typedef bool (*ufa_hash_equal_fn_t)(const void *o1, const void *o2);
@@ -24,6 +21,10 @@ typedef int (*ufa_hash_foreach_fn_t)(void *k, void *v, void *user_data);
 
 typedef struct ufa_hashtable ufa_hashtable_t;
 
+/**
+ * Create a hashtable for strings.
+ * Keys should be strings. Values will be freed using ufa_free
+ */
 #define UFA_HASHTABLE_STRING()                                                 \
 	ufa_hashtable_new((ufa_hash_fn_t) ufa_str_hash,                        \
 			  (ufa_hash_equal_fn_t) ufa_str_equals, ufa_free,      \
