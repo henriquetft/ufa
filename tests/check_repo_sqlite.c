@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2023 Henrique Teófilo                                        */
+/* Copyright (c) 2023-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Test cases for repo_sqlite.c                                               */
@@ -206,8 +206,15 @@ START_TEST(listfiles_ok)
 
 	ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG1, &error);
 	ufa_error_print_and_free(error);
+	error = NULL;
+
 	ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG2, &error);
+	ufa_error_print_and_free(error);
+	error = NULL;
+
 	ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG3, &error);
+	ufa_error_print_and_free(error);
+	error = NULL;
 
 	char *filename = ufa_util_getfilename(TMP_TEST_FILE1);
 
@@ -250,7 +257,6 @@ START_TEST(listfiles_ok)
 	ASSERT_STR_IN_LIST(".ufarepo", list3);
 	ASSERT_STR_IN_LIST(filename, list3);
 	ck_assert_int_eq(2, ufa_list_size(list3));
-
 
 	ufa_free(filename);
 	ufa_list_free(list_root);
