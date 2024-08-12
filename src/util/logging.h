@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2021-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2021-2024 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Definitions for Logging functions                                          */
@@ -14,7 +14,6 @@
 #include "util/error.h"
 #include <limits.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdbool.h>
 
 enum ufa_log_level {
@@ -26,19 +25,12 @@ enum ufa_log_level {
 	UFA_LOG_OFF   = INT_MAX,
 };
 
-void ufa_debug(const char *format, ...);
-
-void ufa_info(const char *format, ...);
-
-void ufa_warn(const char *format, ...);
-
-void ufa_error(const char *format, ...);
-
-void ufa_fatal(const char *format, ...);
+void ufa_log_enablelogdetails(bool details);
 
 void ufa_error_error(struct ufa_error *error);
 
 enum ufa_log_level ufa_log_level_from_str(const char *level);
+
 const char *ufa_log_level_to_str(enum ufa_log_level level);
 
 void ufa_log_setlevel(enum ufa_log_level level);
@@ -50,5 +42,21 @@ void ufa_log_use_syslog();
 void ufa_log_use_file(FILE *file_log);
 
 bool ufa_log_is_logging(enum ufa_log_level level);
+
+void ufa_log_full(enum ufa_log_level loglevel, const char *sourcefile,
+	          int line, const char *format, ...);
+
+/**
+ * Log message
+ *
+ * @param level Level (enum ufa_log_level)
+ * @param format Format (str)
+ */
+#define ufa_log(level, format, ...) ufa_log_full(level, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define ufa_debug(format, ...) ufa_log_full(UFA_LOG_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define ufa_info(format, ...) ufa_log_full(UFA_LOG_INFO, __FILE__, __LINE__,  format, ##__VA_ARGS__)
+#define ufa_warn(format, ...) ufa_log_full(UFA_LOG_WARN, __FILE__, __LINE__,  format, ##__VA_ARGS__)
+#define ufa_error(format, ...) ufa_log_full(UFA_LOG_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define ufa_fatal(format, ...) ufa_log_full(UFA_LOG_FATAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #endif /* LOGGING_H_ */

@@ -12,6 +12,7 @@
 #define UFA_CLI_H_
 
 #include <stdio.h>
+#include <getopt.h>
 
 /* Helper macros for getopt */
 #define HAS_NEXT_ARG             (optind < global_args)

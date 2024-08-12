@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <string.h>
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */

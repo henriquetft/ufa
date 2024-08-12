@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <linux/limits.h>
 
 /* ========================================================================== */
 /* FUNCTIONS -- DECLARATION                                                   */

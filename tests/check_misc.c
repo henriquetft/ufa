@@ -94,7 +94,13 @@ START_TEST(resolvepath_current_dir)
 }
 END_TEST
 
-
+START_TEST(getfilename_ok)
+{
+	const char *s = "/home/nik/Projects/c/ufa/src/core/monitor_inotify.c";
+	char *n = ufa_util_getfilename(s);
+	ck_assert_str_eq("monitor_inotify.c", n);
+	ufa_free(n);
+}
 
 /* ========================================================================== */
 /* SUITE DEFINITIONS AND MAIN FUNCTION                                        */
@@ -115,6 +121,8 @@ Suite *repo_suite(void)
 
 	tcase_add_test(tc_core, resolvepath_dotdot);
 	tcase_add_test(tc_core, resolvepath_dot);
+
+	tcase_add_test(tc_core, getfilename_ok);
 
 
 	/* Add test cases to suite */

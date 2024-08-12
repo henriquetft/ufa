@@ -94,13 +94,13 @@ int main(int argc, char *argv[])
 	int opt;
 	int log = 0;
 
-	int exit_status = EX_OK;
-	bool foreground = false;
+	int exit_status       = EX_OK;
+	bool foreground       = false;
+	bool enablelogdetails = true;
+	FILE *file_log        = NULL;
+	char *filepath_log    = NULL;
 
-	FILE *file_log = NULL;
-	char *filepath_log = NULL;
-
-	while ((opt = getopt(argc, argv, "l:Fhv")) != -1) {
+	while ((opt = getopt(argc, argv, "l:FLhv")) != -1) {
 		switch (opt) {
 		case 'v':
 			printf("%s\n", program_version);
@@ -112,6 +112,10 @@ int main(int argc, char *argv[])
 			goto end;
 		case 'F':
 			foreground = true;
+			break;
+		case 'L':
+			enablelogdetails = true;
+			ufa_log_enablelogdetails(true);
 			break;
 		case 'l':
 			if (log) {
@@ -210,7 +214,7 @@ static int start_ufad(const char *program)
 		return EXIT_FAILURE;
 	}
 
-	ufa_debug("Adding watcher to config dir: %s", cfg_dir);
+	ufa_info("Adding watcher to config dir: %s", cfg_dir);
 	ufa_monitor_add_watcher(cfg_dir,
 				CONFIG_DIR_MASK,
 				callback_event_config);

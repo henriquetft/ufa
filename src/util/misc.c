@@ -54,6 +54,8 @@ char *ufa_util_joinpath(const char *first_element, ...)
  */
 char *ufa_util_getfilename(const char *filepath)
 {
+	ufa_return_val_if(filepath == NULL, NULL);
+	
 	// FIXME rewrite this function
 	struct ufa_list *split = ufa_str_split(filepath, "/"); // FIXME
 	struct ufa_list *last = ufa_list_get_last(split);

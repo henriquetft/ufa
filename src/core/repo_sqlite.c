@@ -80,13 +80,13 @@ struct ufa_repo {
 };
 
 const enum ufa_repo_matchmode ufa_repo_matchmode_supported[] = {
-    UFA_REPO_EQUAL,
-    UFA_REPO_WILDCARD
+	UFA_REPO_EQUAL,
+	UFA_REPO_WILDCARD
 };
 
 const static char *ufa_repo_matchmode_sql[] = {
-    "=",
-    "LIKE"
+	"=",
+	"LIKE"
 };
 
 
@@ -1002,15 +1002,16 @@ static struct ufa_repo *open_sqlite_conn(const char *file,
 error_opening:
 	ufa_free(repo);
 	ufa_error_new(error, UFA_ERROR_DATABASE,
-		      "Error opening SQLite db %s. Returned: %d", file, rc);
+		      "Could not open SQLite db %s. Returned: %d", file, rc);
 	return NULL;
 error_stat:
 	ufa_error_new(error, UFA_ERROR_FILE, strerror(errno));
 	ufa_free(repo);
 	return NULL;
 error_create_table:
-	ufa_error_new(error, UFA_ERROR_DATABASE, "error creating tables: %s",
-		      sqlite3_errmsg(repo->db));
+	ufa_error_new(error,
+		      UFA_ERROR_DATABASE,
+		      "Could not create tables: %s", sqlite3_errmsg(repo->db));
 	sqlite3_free(errmsg);
 	sqlite3_close(repo->db);
 	ufa_free(repo);

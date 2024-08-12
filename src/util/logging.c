@@ -9,12 +9,15 @@
 /* ========================================================================== */
 
 #include "util/logging.h"
+
+#include "misc.h"
+#include "string.h"
 #include "util/error.h"
 #include <stdarg.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <syslog.h>
+#include <unistd.h>
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
@@ -23,12 +26,13 @@
 static FILE *global_file = NULL;
 
 static int loglevel = UFA_LOG_OFF;
+static int logdetails = false;
 static bool log_to_syslog = false;
 
 #define IS_VALID_LOG_LEVEL(level) (level >= UFA_LOG_DEBUG \
 				   && level <= UFA_LOG_FATAL)
 
-struct log_level_attrs {
+static struct log_level_attrs {
 	const char *prefix_str;
 	const char *color;
 	const int syslog_priority;
@@ -82,6 +86,11 @@ void ufa_log_setlevel(enum ufa_log_level level)
 	loglevel = level;
 }
 
+void ufa_log_enablelogdetails(bool details)
+{
+	logdetails = details;
+}
+
 enum ufa_log_level ufa_log_getlevel()
 {
 	return loglevel;
@@ -114,55 +123,25 @@ static void log_syslog(enum ufa_log_level level, const char *format, va_list ap)
 	vsyslog(log_level_attr[level].syslog_priority, format, ap);
 }
 
-
-
-void ufa_debug(const char *format, ...)
+void ufa_log_full(enum ufa_log_level level, const char *sourcefile,
+		  int line, const char *format, ...)
 {
-	if (loglevel <= UFA_LOG_DEBUG) {
-		va_list ap;
-		va_start(ap, format);
-		write_log(UFA_LOG_DEBUG, format, ap);
-		va_end(ap);
-	}
-}
+	if (sourcefile != NULL && loglevel <= level) {
+		char *filename = NULL;
+		char *str = ufa_str_dup(format);
 
-void ufa_info(const char *format, ...)
-{
-	if (loglevel <= UFA_LOG_INFO) {
+		if (logdetails) {
+			filename = ufa_util_getfilename(sourcefile);
+			str = ufa_str_sprintf("(%s:%d) %s", filename,
+								  line,
+								  format);
+		}
 		va_list ap;
-		va_start(ap, format);
-		write_log(UFA_LOG_INFO, format, ap);
+		va_start(ap, str);
+		write_log(level, str, ap);
 		va_end(ap);
-	}
-}
-
-void ufa_warn(const char *format, ...)
-{
-	if (loglevel <= UFA_LOG_WARN) {
-		va_list ap;
-		va_start(ap, format);
-		write_log(UFA_LOG_WARN, format, ap);
-		va_end(ap);
-	}
-}
-
-void ufa_error(const char *format, ...)
-{
-	if (loglevel <= UFA_LOG_ERROR) {
-		va_list ap;
-		va_start(ap, format);
-		write_log(UFA_LOG_ERROR, format, ap);
-		va_end(ap);
-	}
-}
-
-void ufa_fatal(const char *format, ...)
-{
-	if (loglevel <= UFA_LOG_FATAL) {
-		va_list ap;
-		va_start(ap, format);
-		write_log(UFA_LOG_FATAL, format, ap);
-		va_end(ap);
+		ufa_free(filename);
+		ufa_free(str);
 	}
 }
 
