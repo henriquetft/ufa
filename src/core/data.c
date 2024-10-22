@@ -255,6 +255,8 @@ bool ufa_data_removefile(const char *filepath, struct ufa_error **error)
 {
 	ufa_return_val_iferror(error, false);
 
+	ufa_debug("Removing '%s'", filepath);
+
 	char *dir = ufa_util_dirname(filepath);
 	ufa_repo_t *repo = get_repo_for(dir, error);
 	ufa_free(dir);
@@ -269,6 +271,8 @@ bool ufa_data_renamefile(const char *oldfilepath,
 			 struct ufa_error **error)
 {
 	ufa_return_val_iferror(error, false);
+
+	ufa_debug("Renaming '%s' ---> '%s'", oldfilepath, newfilepath);
 
 	ufa_repo_t *repo = get_repo_for(newfilepath, error);
 	if (repo == NULL) {

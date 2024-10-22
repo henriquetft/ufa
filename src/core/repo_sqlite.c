@@ -166,12 +166,15 @@ ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error)
 	    ufa_util_joinpath(repo_abs, REPOSITORY_FILENAME, NULL);
 	ufa_debug("Initializing repo '%s'", filepath);
 	repo = open_sqlite_conn(filepath, repo_abs, error);
-	if (repo != NULL) {
-		create_repo_indicator_file(repo_abs, error);
-	}
+	ufa_goto_iferror(error, end);
+
+	sqlite3_exec(repo->db, "PRAGMA foreign_keys = ON", 0, 0, 0);
+
+	create_repo_indicator_file(repo_abs, error);
+
+end:
 	ufa_free(repo_abs);
 	ufa_free(filepath);
-end:
 	return repo;
 }
 
@@ -433,7 +436,7 @@ bool ufa_repo_unsettag(const ufa_repo_t *repo,
 	if (!(file_id = get_file_id(repo, filepath, error))) {
 		goto freeres;
 	}
-
+	
 	if (!db_prepare(repo, &stmt, sql_delete, error)) {
 		goto freeres;
 	}
