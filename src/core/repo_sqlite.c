@@ -1346,7 +1346,7 @@ static void create_repo_indicator_file(const char *repo,
 					   REPOSITORY_INDICATOR_FILE_NAME,
 					   NULL);
 
-	ufa_debug("Writting '%s' on file '%s'", repository, filepath);
+	ufa_debug("Writting '%s' on file '%s' (rep ind)", repository, filepath);
 	FILE *fp = fopen(filepath, "w");
 	if (fp == NULL) {
 		ufa_error_new(error,
