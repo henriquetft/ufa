@@ -268,14 +268,14 @@ END_TEST
 START_TEST(settag_ok)
 {
 	struct ufa_error *error = NULL;
-	bool ret = ufa_repo_settag(global_repo, TMP_TEST_FILE1, TAG1, &error);
+	bool ret = ufa_repo_settag(global_repo,
+		TMP_TEST_FILE1, TAG1, &error);
 	ck_assert_msg(error == NULL, "%s", error->message);
 	ck_assert(ret);
 
-	struct ufa_list *list = NULL;
-	ret = ufa_repo_gettags(global_repo, TMP_TEST_FILE1, &list, &error);
+	struct ufa_list *list = ufa_repo_gettags(global_repo,
+		TMP_TEST_FILE1, &error);
 	ck_assert_msg(error == NULL, "%s", error->message);
-	ck_assert(ret);
 	ck_assert(list != NULL);
 	ck_assert(ufa_list_size(list) == 1);
 	ck_assert(ufa_str_equals(list->data, TAG1));

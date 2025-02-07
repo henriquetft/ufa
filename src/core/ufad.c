@@ -379,6 +379,7 @@ static void callback_event_repo(const struct ufa_event *event)
 	}
 
 	if (error && error->code != UFA_ERROR_FILE_NOT_IN_DB) {
+		ufa_error(error->message);
 		ufa_error_print_and_free(error);
 	}
 }

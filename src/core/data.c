@@ -32,7 +32,7 @@ static ufa_hashtable_t *repos = NULL;
 
 static void add_set(ufa_hashtable_t *set, const char *str);
 static void  init_repo_hashtable();
-static ufa_repo_t *get_repo_for(const char *filepath, struct ufa_error **error);
+static ufa_repo_t *get_repo_for_file(const char *filepath, struct ufa_error **error);
 static ufa_repo_t *get_repo(const char *repodir, struct ufa_error **error);
 
 /* ========================================================================== */
@@ -52,17 +52,17 @@ void ufa_data_close()
 	ufa_hashtable_free(repos);
 }
 
-bool ufa_data_gettags(const char *filepath,
-		      struct ufa_list **list,
-		      struct ufa_error **error)
+struct ufa_list *ufa_data_gettags(const char *filepath,
+                                  struct ufa_error **error)
 {
 	ufa_return_val_iferror(error, false);
 
-	ufa_repo_t *repo = get_repo_for(filepath, error);
+	ufa_repo_t *repo = get_repo_for_file(filepath, error);
 	if (repo == NULL) {
 		return false;
 	}
-	return ufa_repo_gettags(repo, filepath, list, error);
+
+	return ufa_repo_gettags(repo, filepath, error);
 }
 
 bool ufa_data_settag(const char *filepath,
@@ -71,7 +71,7 @@ bool ufa_data_settag(const char *filepath,
 {
 	ufa_return_val_iferror(error, false);
 
-	ufa_repo_t *repo = get_repo_for(filepath, error);
+	ufa_repo_t *repo = get_repo_for_file(filepath, error);
 	if (repo == NULL) {
 		return false;
 	}
@@ -84,7 +84,7 @@ bool ufa_data_unsettag(const char *filepath,
 {
 	ufa_return_val_iferror(error, false);
 
-	ufa_repo_t *repo = get_repo_for(filepath, error);
+	ufa_repo_t *repo = get_repo_for_file(filepath, error);
 	if (repo == NULL) {
 		return false;
 	}
@@ -96,7 +96,7 @@ bool ufa_data_cleartags(const char *filepath,
 {
 	ufa_return_val_iferror(error, false);
 
-	ufa_repo_t *repo = get_repo_for(filepath, error);
+	ufa_repo_t *repo = get_repo_for_file(filepath, error);
 	if (repo == NULL) {
 		return false;
 	}
@@ -144,7 +144,7 @@ bool ufa_data_setattr(const char *filepath,
 {
 	ufa_return_val_iferror(error, false);
 
-	ufa_repo_t *repo = get_repo_for(filepath, error);
+	ufa_repo_t *repo = get_repo_for_file(filepath, error);
 	if (repo == NULL) {
 		return false;
 	}
@@ -157,7 +157,7 @@ bool ufa_data_unsetattr(const char *filepath,
 {
 	ufa_return_val_iferror(error, false);
 
-	ufa_repo_t *repo = get_repo_for(filepath, error);
+	ufa_repo_t *repo = get_repo_for_file(filepath, error);
 	if (repo == NULL) {
 		return false;
 	}
@@ -171,7 +171,7 @@ struct ufa_list *ufa_data_getattr(const char *filepath,
 	ufa_return_val_iferror(error, NULL);
 
 	struct ufa_list *ret = NULL;
-	ufa_repo_t *repo = get_repo_for(filepath, error);
+	ufa_repo_t *repo = get_repo_for_file(filepath, error);
 	if (repo == NULL) {
 		goto end;
 	}
@@ -258,13 +258,15 @@ bool ufa_data_removefile(const char *filepath, struct ufa_error **error)
 	ufa_debug("Removing '%s'", filepath);
 
 	char *dir = ufa_util_dirname(filepath);
-	ufa_repo_t *repo = get_repo_for(dir, error);
+	ufa_repo_t *repo = get_repo_for_file(dir, error);
 	ufa_free(dir);
 	if (repo == NULL) {
 		return false;
 	}
 	return ufa_repo_removefile(repo, filepath, error);
 }
+
+static ufa_repo_t *get_repo_for_dir(const char *dir, struct ufa_error **error);
 
 bool ufa_data_renamefile(const char *oldfilepath,
 			 const char *newfilepath,
@@ -274,11 +276,26 @@ bool ufa_data_renamefile(const char *oldfilepath,
 
 	ufa_debug("Renaming '%s' ---> '%s'", oldfilepath, newfilepath);
 
-	ufa_repo_t *repo = get_repo_for(newfilepath, error);
-	if (repo == NULL) {
-		return false;
+	char *olddir = NULL;
+	bool ret = false;
+
+	ufa_repo_t *repo_new = get_repo_for_file(newfilepath, error);
+	if (repo_new == NULL) {
+		goto end;
 	}
-	return ufa_repo_renamefile(repo, oldfilepath, newfilepath, error);
+
+	olddir = ufa_util_dirname(oldfilepath);
+	ufa_repo_t *repo_old = get_repo_for_dir(olddir, error);
+	if (repo_old == NULL) {
+		goto end;
+	}
+
+	ret = ufa_repo_renamefile(repo_old, repo_new, oldfilepath, newfilepath,
+	error);
+
+end:
+	ufa_free(olddir);
+	return ret;
 }
 
 
@@ -332,12 +349,20 @@ static ufa_repo_t *get_repo(const char *repodir, struct ufa_error **error)
 }
 
 
-static ufa_repo_t *get_repo_for(const char *filepath, struct ufa_error **error)
+static ufa_repo_t *get_repo_for_file(const char *filepath, struct ufa_error **error)
 {
 	ufa_return_val_iferror(error, NULL);
 
 	char *s = ufa_repo_getrepofolderfor(filepath, error);
 	ufa_repo_t *ret = get_repo(s, error);
 	ufa_free(s);
+	return ret;
+}
+
+static ufa_repo_t *get_repo_for_dir(const char *dir, struct ufa_error **error)
+{
+	ufa_return_val_iferror(error, NULL);
+
+	ufa_repo_t *ret = get_repo(dir, error);
 	return ret;
 }

@@ -287,20 +287,17 @@ struct ufa_list *ufa_repo_listfiles(const ufa_repo_t *repo,
 	return list;
 }
 
-/* TODO use error argument and returns the list */
-bool ufa_repo_gettags(const ufa_repo_t *repo,
-		      const char *filepath,
-		      struct ufa_list **list,
-		      struct ufa_error **error)
+struct ufa_list *ufa_repo_gettags(const ufa_repo_t *repo,
+                                  const char *filepath,
+                                  struct ufa_error **error)
 {
 	ufa_debug("%s: '%s'", __func__, filepath);
 
-	bool status             = false;
 	char *filename          = NULL;
 	sqlite3_stmt *stmt      = NULL;
 	struct ufa_list *result = NULL;
-
 	ufa_goto_iferror(error, end);
+
 
 	int file_id;
 	if (!(file_id = get_file_id(repo, filepath, error))) {
@@ -323,13 +320,12 @@ bool ufa_repo_gettags(const ufa_repo_t *repo,
 		result = ufa_list_prepend2(result, ufa_str_dup(attr), ufa_free);
 	}
 
-	status = true;
-	*list = ufa_list_reverse(result);
+	result = ufa_list_reverse(result);
 freeres:
 	sqlite3_finalize(stmt);
 	ufa_free(filename);
 end:
-	return status;
+	return result;
 }
 
 /**
@@ -727,8 +723,7 @@ char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error)
 	char *repodb_file   = NULL;
 	char *repo_ind_file = NULL;
 	char *repofile      = NULL;
-
-	char *repository = NULL;
+	char *repository    = NULL;
 
 	ufa_goto_iferror(error, end);
 
@@ -843,24 +838,26 @@ end:
 }
 
 
-bool ufa_repo_renamefile(const ufa_repo_t *repo,
+bool ufa_repo_renamefile(const ufa_repo_t *repo_old,
+                         const ufa_repo_t *repo_new,
 			 const char *oldfilepath,
 			 const char *newfilepath,
 			 struct ufa_error **error)
 {
+	ufa_goto_iferror(error, end);
+	assert(repo_old != repo_new);
+
 	sqlite3_stmt *stmt = NULL;
 	char *new_filename = NULL;
-	const char *sql    = "UPDATE file SET name=? WHERE id=?";
 	bool status        = false;
-
-	ufa_goto_iferror(error, end);
+	const char *sql    = "UPDATE file SET name=? WHERE id=?";
 
 	int file_id;
-	if (!(file_id = get_file_id(repo, oldfilepath, error))) {
+	if (!(file_id = get_file_id(repo_new, oldfilepath, error))) {
 		goto freeres;
 	}
 
-	if (!db_prepare(repo, &stmt, sql, error)) {
+	if (!db_prepare(repo_new, &stmt, sql, error)) {
 		goto freeres;
 	}
 
@@ -868,14 +865,61 @@ bool ufa_repo_renamefile(const ufa_repo_t *repo,
 	sqlite3_bind_text(stmt, 1, new_filename, -1, NULL);
 	sqlite3_bind_int(stmt, 2, file_id);
 
-	if (!db_execute(repo, stmt, error)) {
+	if (!db_execute(repo_new, stmt, error)) {
 		goto freeres;
 	}
 
-	int affected = sqlite3_changes(repo->db);
+	int affected = sqlite3_changes(repo_new->db);
 	status = (affected == 1);
 
+	ufa_debug("Filename updated on new repo: '%s'", newfilepath);
+
+	// Copy tags, attributes, and remove file from old repo
+	// if repo_old != repo_new
+	char *dirfileold           = NULL;
+	char *dirfilenew           = NULL;
+	struct ufa_list *tags      = NULL;
+	struct ufa_list *listattrs = NULL;
+	struct ufa_error *error2   = NULL;
+
+	dirfileold = ufa_util_dirname(oldfilepath);
+	dirfilenew = ufa_util_dirname(newfilepath);
+
+	if (!ufa_str_equals(dirfilenew, dirfileold)) {
+		ufa_debug("Moving file from repo '%s' to '%s'", dirfileold,
+			dirfilenew);
+
+		// Copying tags
+		tags = ufa_repo_gettags(repo_old, oldfilepath, &error2);
+		ufa_debug("Copying %d tags", ufa_list_size(tags));
+		for (UFA_LIST_EACH(i, tags)) {
+			ufa_repo_settag(repo_new, newfilepath,
+			                i->data, &error2);
+		}
+		ufa_goto_iferror(&error2, freeres);
+
+		// Copying attributes
+		listattrs = ufa_repo_getattr(repo_old, oldfilepath, &error2);
+		ufa_debug("Copying %d attributes", ufa_list_size(listattrs));
+		for (UFA_LIST_EACH(i, listattrs)) {
+			struct ufa_repo_attr *attr = (struct ufa_repo_attr *) i->data;
+			ufa_repo_setattr(repo_new, newfilepath,
+			attr->attribute, attr->value, &error2);
+		}
+		ufa_goto_iferror(&error2, freeres);
+
+		ufa_debug("Removing entry on db for '%s'", oldfilepath);
+		ufa_repo_removefile(repo_old, oldfilepath, &error2);
+	}
+
+
+error:
+	ufa_error_print_and_free(error2);
 freeres:
+	ufa_list_free(listattrs);
+	ufa_list_free(tags);
+	ufa_free(dirfileold);
+	ufa_free(dirfilenew);
 	ufa_free(new_filename);
 	sqlite3_finalize(stmt);
 end:
@@ -927,8 +971,7 @@ static void db_begin(ufa_repo_t *repo)
 				  NULL,
 				  NULL);
 	if (status != SQLITE_OK) {
-		// FIXME log error message
-		ufa_error("Failed to begin transaction\n");
+		ufa_error("Failed to begin transaction");
 	}
 }
 
@@ -937,7 +980,7 @@ static void db_commit(const ufa_repo_t *repo)
 	int status = sqlite3_exec(repo->db, "COMMIT;", NULL, NULL, NULL);
 	if (status != SQLITE_OK) {
 		// FIXME log error message
-		ufa_error("Failed to commit transaction\n");
+		ufa_error("Failed to commit transaction");
 	}
 }
 

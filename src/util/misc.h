@@ -48,10 +48,9 @@
  */
 #define   if_goto(cond, label)   if (cond) { goto label; }
 
-#define   ufa_goto_iferror(error, label) if (HAS_ERROR(error)) { goto label; }
-
-#define   ufa_return_val_iferror(error, val) if (HAS_ERROR(error)) {  return val; }
-#define   ufa_return_iferror(error) if (HAS_ERROR(error)) {  return; }
+#define   ufa_goto_iferror(error, label)      if (HAS_ERROR(error)){goto label;}
+#define   ufa_return_val_iferror(error, val)  if (HAS_ERROR(error)){return val;}
+#define   ufa_return_iferror(error)           if (HAS_ERROR(error)){return;}
 /**
  * Macro to use with FOR statement to iterate over arrays
  * e.g. for (UFA_ARRAY_EACH(i, array)) { ... }

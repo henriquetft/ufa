@@ -23,9 +23,8 @@ struct ufa_list *ufa_data_listtags(const char *repodir,
 				   struct ufa_error **error);
 
 
-bool ufa_data_gettags(const char *filepath,
-		      struct ufa_list **list,
-		      struct ufa_error **error);
+struct ufa_list *ufa_data_gettags(const char *filepath,
+				  struct ufa_error **error);
 
 bool ufa_data_settag(const char *filepath,
 		     const char *tag,

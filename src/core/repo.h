@@ -52,10 +52,9 @@ struct ufa_list *ufa_repo_listfiles(const ufa_repo_t *repo,
 				    const char *dirpath,
 				    struct ufa_error **error);
 
-bool ufa_repo_gettags(const ufa_repo_t *repo,
-		      const char *filename,
-		      struct ufa_list **list,
-		      struct ufa_error **error);
+struct ufa_list *ufa_repo_gettags(const ufa_repo_t *repo,
+                                  const char *filepath,
+                                  struct ufa_error **error);
 
 bool ufa_repo_settag(const ufa_repo_t *repo,
 		     const char *filepath,
@@ -129,7 +128,6 @@ ufa_repo_filterattr_new(const char *attribute,
 
 void ufa_repo_filterattr_free(struct ufa_repo_filterattr *filter);
 
-
 void ufa_repo_attr_free(struct ufa_repo_attr *attr);
 
 char *ufa_repo_getrepofolderfor(const char *filepath, struct ufa_error **error);
@@ -143,7 +141,8 @@ bool ufa_repo_removefile(const ufa_repo_t *repo,
 			 const char *filepath,
 			 struct ufa_error **error);
 
-bool ufa_repo_renamefile(const ufa_repo_t *repo,
+bool ufa_repo_renamefile(const ufa_repo_t *repo_old,
+                         const ufa_repo_t *repo_new,
 			 const char *oldfilepath,
 			 const char *newfilepath,
 			 struct ufa_error **error);

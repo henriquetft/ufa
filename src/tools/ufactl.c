@@ -51,6 +51,7 @@ help_command_fn_t help_commands[] = {
     print_usage_list,
     print_usage_init,
 };
+
 handle_command_fn_t handle_commands[] = {
     handle_add,
     handle_remove,
@@ -189,16 +190,16 @@ static int handle_init()
 int main(int argc, char *argv[])
 {
 	program_name = argv[0];
-	global_args = argc;
-	global_argv = argv;
-
-	int opt;
+	global_args  = argc;
+	global_argv  = argv;
 
 	bool error_usage = false;
-	int exit_status = EX_OK;
-	int r = 0, log = 0;
+	int exit_status  = EX_OK;
+	int log          = 0;
+	int opt;
 
-	while ((opt = getopt(argc, argv, ":l:hv")) != -1 && !error_usage) {
+	while ((opt = getopt(argc, argv, ":l:hv")) != -1
+		&& !error_usage) {
 		switch (opt) {
 		case 'v':
 			printf("%s\n", program_version);

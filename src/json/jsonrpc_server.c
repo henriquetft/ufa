@@ -311,7 +311,7 @@ static void handle_gettags(int fd, struct ufa_jsonrpc *rpc)
 	char *filepath = (char *) get_param(rpc, "filepath", &error);
 	if_goto(error != NULL, error);
 
-	ufa_data_gettags(filepath, &list, &error);
+	list = ufa_data_gettags(filepath, &error);
 	if (error) {
 		error->code = JSONRPC_INTERNAL_ERROR;
 		goto error;
