@@ -1,91 +1,155 @@
 # UFA (User File Attributes)
 
-UFA - User File Attributes is a software that allows the user to set and manage custom tags and "key-value" attributes for files.
+**UFA** is a user-level tool that enables setting and managing custom **tags** and **key-value attributes** on regular files. It doesn’t rely on any specific filesystem — all metadata is stored separately in a lightweight SQLite database.
 
-Tags and attributes can be used as additional metadata of files, allowing several kinds of operations, such as search by tag/attribute and even mount a tag-based filesystem (FUSE), presenting files based on tags, rather than filesystem folders.
+With UFA, you can:
+- Organize files using searchable metadata (tags and attributes),
+- Search files by any combination of tags or attributes,
+- Mount a **tag-based virtual filesystem** via FUSE for alternative 
+  navigation.
 
-The user makes a new ufa repository with `ufactl init`. It sets up a new repository in the specified folder.
+Because metadata is stored externally, UFA is compatible with **any filesystem** and **any OS** where you can run the daemon and CLI tools.
 
-There are several commands to work with files in repositories.
+---
 
-Examples:
+## 🚀 Key Features
 
-* `ufaattr set document.pdf author me`: Set attribute 'author' with value 'me' for document.pdf
-* `ufaattr get document.pdf author`: Get the value of attribute 'author'
-* `ufatag set book.pdf programming`: Set new tag 'programming' for book.pdf
-* `ufatag list book.pdf`: List all tags of book.pdf
+- Add custom metadata (e.g. `author=me`, `year=2024`)
+- Search files by tag and attribute combinations
+- Tag-based virtual filesystem (FUSE)
+- Lightweight and local: no server or root required
+- Compatible with any filesystem (ext4, NTFS, FAT32, etc.)
+- Integration with Nautilus
+- Modular CLI tools and background daemon
 
-Tags and attributes can be used to search for files.
+---
 
-For example:
-
-```shell
-ufafind -t programming -t unix -a year=2023
-``` 
-
-it will search for files with tags 'pogramming', 'unix' and attribute 'year' with value '2023'
-
-All these commands can be executed from the directory of repository, or the user can specify another repository path with `-r` switch.
-
-However, the best option is to add the repository in the global config, so the commands will work without having to specify directory or need to be in the current dir. In this case, the `ufafind` command will search in all repositories from config. This can be achieved with `ufactl add <dir>`
-
-
-## Command-line tools
-### ufactl
-
-Commands:
-
-* `init`: Initialize a repository
-* `add`: Add the repository (global config)
-* `list`: List current watched repositories
-* `remove`: Remove repository directory from watching list
-
-### ufad
-
-The UFA Daemon must be running to `ufafind`, `ufaattr` and `ufatag` work properly.
-
-### ufafs
-Mount a tag-based filesystem.
-
-Example:
+## 🔧 Example Usage
 
 ```bash
-ufafs -f -s --repository=/home/user/myrepo /home/user/folder_organized_by_tags
+ufaattr set document.pdf author me         # Set an attribute
+ufaattr get document.pdf author            # Get attribute value
+ufatag set book.pdf programming            # Add a tag
+ufatag list book.pdf                       # List all tags
+
+ufafind -t programming -t unix -a year=2023  # Search files
 ```
 
-### CLI to work with files
-* `ufaattr`: CLI tool for managing attributes of files
-* `ufatag`: CLI tool for managing tags of files
-* `ufafind`: CLI tool for searching files by tags and attributes
+Repositories can be initialized with:
 
+```bash
+ufactl init .
+```
 
-## Integrations
-It is possible to integrate UFA with file managers, such as `nautilus` and `dolphin`. In `contrib` folder there is a nautilus extension that creates a context menu to help user to manage tags and attributes.
+Then added to global configuration:
 
-## Build and install
-I recommend installing it in $HOME directory:
+```bash
+ufactl add .
+```
 
-```shell
+Once added, it can search for files across all registered repositories.
+
+---
+
+## 🛠 Command-Line Tools
+
+### `ufactl`
+Manage repositories:
+- `init`: Initialize a new repository
+- `add`: Add repository to global configuration
+- `list`: List registered repositories
+- `remove`: Remove repository from configuration
+
+### `ufaattr`
+Manage file attributes:
+- `set <file> <key> <value>`
+- `get <file> <key>`
+
+### `ufatag`
+Manage file tags:
+- `set <file> <tag>`
+- `list <file>`
+
+### `ufafind`
+Search files using filters:
+- Tags: `-t <tag>`
+- Attributes: `-a <key>=<value>`
+
+### `ufafs`
+Mount a virtual filesystem organized by tags:
+
+```bash
+ufafs -f -s --repository=/home/user/myrepo /home/user/tags_fs
+```
+
+---
+
+## 🧩 Integration with File Managers
+
+You can integrate UFA into graphical file managers.
+
+- **Nautilus** extension is available under the `contrib/` directory.
+- These extensions provide context menus for managing tags and attributes.
+
+---
+
+## 🧠 Architecture & Design
+
+UFA uses a **client-daemon architecture**. CLI tools communicate with a background daemon (`ufad`) via a **Unix domain socket**, using structured **JSON messages**.
+
+This provides:
+
+- Clear API boundaries (e.g., for GUIs, web UIs or remote tools)
+- Safe, local communication with permission control
+- High extensibility
+
+All metadata is stored in an SQLite database (`repo.db`) at the repository root.
+This design makes UFA:
+
+- **Cross-platform**: No reliance on extended file attributes (xattr)
+- **Portable**: Metadata moves with your folder
+- **Versionable**: Easily tracked with Git or backups
+- **Scalable**: Structured queries enable fast filtering/search
+
+---
+
+## 🏗 Build & Install
+
+Recommended installation in your `$HOME`:
+
+```bash
 git clone https://github.com/henriquetft/ufa.git
 cd ufa
-mkdir build
-cd build
+mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
 make
 make install
 ```
 
-You must start ufad service
-```shell
+Start the daemon:
+
+```bash
 systemctl --user start ufad.service
 ```
 
+(Optional) Enable it on login:
 
-If you want to enable ufad service (so it will start automatically at login):
-```shell
+```bash
 systemctl --user enable ufad.service
 ```
 
+---
 
+## 📝 License
 
+UFA is licensed under the **BSD 3-Clause License**.
 
+---
+
+## 🙌 Contributing & Ideas
+
+UFA was designed to be modular and extensible. Ideas for future development:
+
+- GUI management tool
+- Dolphin extension (context menu)
+- Integration with any other file manager
