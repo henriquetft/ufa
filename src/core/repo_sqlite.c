@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2021-2024 Henrique Teófilo                                   */
+/* Copyright (c) 2021-2025 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of repo module (repo.h) using sqlite3.                      */
@@ -121,7 +121,9 @@ static struct ufa_list *get_files_with_tags(const ufa_repo_t *repo,
 					    struct ufa_list *tags,
 					    struct ufa_error **error);
 
-static sqlite_int64 insert_tag(const ufa_repo_t *repo, const char *tag);
+static sqlite_int64 insert_tag(const ufa_repo_t *repo,
+                               const char *tag,
+                               struct ufa_error **error);
 static bool insert_db_version(const ufa_repo_t *repo);
 
 static int insert_file(const ufa_repo_t *repo,
@@ -152,9 +154,10 @@ static char *generate_sql_search_tags(struct ufa_list *tags);
 
 ufa_repo_t *ufa_repo_init(const char *repository, struct ufa_error **error)
 {
+	ufa_goto_iferror(error, end);
+
 	char *repo_abs   = NULL;
 	ufa_repo_t *repo = NULL;
-	ufa_goto_iferror(error, end);
 
 	repo_abs = ufa_util_abspath(repository);
 	if (!ufa_util_isdir(repo_abs)) {
@@ -291,12 +294,13 @@ struct ufa_list *ufa_repo_gettags(const ufa_repo_t *repo,
                                   const char *filepath,
                                   struct ufa_error **error)
 {
+	ufa_goto_iferror(error, end);
+
 	ufa_debug("%s: '%s'", __func__, filepath);
 
 	char *filename          = NULL;
 	sqlite3_stmt *stmt      = NULL;
 	struct ufa_list *result = NULL;
-	ufa_goto_iferror(error, end);
 
 
 	int file_id;
@@ -343,7 +347,7 @@ int ufa_repo_inserttag(const ufa_repo_t *repo,
 
 	if (tag_id == 0) {
 		ufa_debug("tag '%s' does not exist. Inserting tag ...\n", tag);
-		tag_id = insert_tag(repo, tag);
+		tag_id = insert_tag(repo, tag, error);
 	} else if (tag_id > 0) {
 		ufa_debug("Tag '%s' already exist\n", tag);
 	}
@@ -387,6 +391,8 @@ bool ufa_repo_cleartags(const ufa_repo_t *repo,
                         const char *filepath,
                         struct ufa_error **error)
 {
+	ufa_return_val_iferror(error, false);
+
 	int r = 0;
 	bool status = false;
 	sqlite3_stmt *stmt = NULL;
@@ -407,7 +413,10 @@ bool ufa_repo_cleartags(const ufa_repo_t *repo,
 
 	r = sqlite3_step(stmt);
 	if (r != SQLITE_DONE) {
-		fprintf(stderr, "sqlite error: %d\n", r);
+		ufa_error_new(error, UFA_ERROR_DATABASE,
+		             "sqlite3_step error on %s for repo '%s': %d",
+		             __func__, repo->repository_path, r);
+
 		goto freeres;
 	}
 	status = true;
@@ -845,7 +854,6 @@ bool ufa_repo_renamefile(const ufa_repo_t *repo_old,
 			 struct ufa_error **error)
 {
 	ufa_goto_iferror(error, end);
-	assert(repo_old != repo_new);
 
 	sqlite3_stmt *stmt = NULL;
 	char *new_filename = NULL;
@@ -1217,8 +1225,12 @@ end:
 	return result;
 }
 
-static sqlite_int64 insert_tag(const ufa_repo_t *repo, const char *tag)
+static sqlite_int64 insert_tag(const ufa_repo_t *repo,
+                               const char *tag,
+                               struct ufa_error **error)
 {
+	ufa_goto_iferror(error, end);
+
 	sqlite_int64 id_tag = -1;
 	sqlite3_stmt *stmt = NULL;
 
@@ -1229,8 +1241,11 @@ static sqlite_int64 insert_tag(const ufa_repo_t *repo, const char *tag)
 	sqlite3_bind_text(stmt, 1, tag, -1, NULL);
 	int r = sqlite3_step(stmt);
 	if (r != SQLITE_DONE) {
-		// FIXME use db_execute ?
-		ufa_error("sqlite3_step error on '%s': %d\n", __func__ , r);
+		ufa_error_new(error,
+		              UFA_ERROR_DATABASE,
+		              "sqlite3_step error on %s for repo '%s': %d",
+		              __func__, repo->repository_path, r);
+
 		goto end;
 	}
 	id_tag = sqlite3_last_insert_rowid(repo->db);
@@ -1326,7 +1341,7 @@ static int get_file_id_by_name(const ufa_repo_t *repo,
 		if (ufa_util_isfile(filepath)) {
 			ufa_debug(
 			    "File '%s' needs to be inserted on file table",
-			    filename);
+			    filepath);
 			file_id = insert_file(repo, filename, error);
 			if (file_id == -1) {
 				ufa_error("Error inserting on db, file '%s'");
