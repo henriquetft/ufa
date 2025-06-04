@@ -29,6 +29,7 @@ char TMP_REPO_DIR[] = "/tmp/ufa-test-XXXXXX";
 char *TMP_REPO_FILE = NULL;
 char *TMP_UFAREPOFILE = NULL;
 char *TMP_TEST_FILE1 = NULL;
+char *TMP_TEST_FILE2 = NULL;
 
 
 const char *TAG1 = "tag1";
@@ -58,11 +59,14 @@ static void init_files_repo_tmp()
 	TMP_REPO_FILE   = ufa_util_joinpath(TMP_REPO_DIR, "repo.sqlite", NULL);
 	TMP_UFAREPOFILE = ufa_util_joinpath(TMP_REPO_DIR, ".ufarepo", NULL);
 	TMP_TEST_FILE1  = ufa_util_joinpath(TMP_REPO_DIR, "testfile1", NULL);
+	TMP_TEST_FILE2  = ufa_util_joinpath(TMP_REPO_DIR, "testfile2", NULL);
 
 	create_file(TMP_TEST_FILE1);
+	create_file(TMP_TEST_FILE2);
 
 	printf("Repo dir.........: %s\n", TMP_REPO_DIR);
 	printf("Test file 1......: %s\n", TMP_TEST_FILE1);
+	printf("Test file 1......: %s\n", TMP_TEST_FILE2);
 }
 
 static void remove_files_repo_tmp()
@@ -70,11 +74,13 @@ static void remove_files_repo_tmp()
 	ufa_util_remove_file(TMP_REPO_FILE, NULL);
 	ufa_util_remove_file(TMP_UFAREPOFILE, NULL);
 	ufa_util_remove_file(TMP_TEST_FILE1, NULL);
+	ufa_util_remove_file(TMP_TEST_FILE2, NULL);
 	ufa_util_rmdir(TMP_REPO_DIR, NULL);
 
 	ufa_free(TMP_REPO_FILE);
 	ufa_free(TMP_UFAREPOFILE);
 	ufa_free(TMP_TEST_FILE1);
+	ufa_free(TMP_TEST_FILE2);
 }
 
 static void insert_test_tags()
@@ -283,6 +289,20 @@ START_TEST(settag_ok)
 }
 END_TEST
 
+START_TEST(rename_file)
+{
+	const char *new_file = ufa_util_joinpath(TMP_REPO_DIR, "abc", NULL);
+	struct ufa_error *error = NULL;
+	bool ret = ufa_repo_renamefile(global_repo, global_repo, TMP_TEST_FILE2,
+	new_file,
+	 &error);
+	ck_assert_msg(error == NULL, "%s", error->message);
+	ck_assert(ret);
+
+	// FIXME checks new file on repo ?
+}
+END_TEST
+
 
 /* ========================================================================== */
 /* TEST FUNCTIONS FOR ufa_repo_getrepopath                                    */
@@ -319,6 +339,7 @@ Suite *repo_suite(void)
 	TCase *tc_init;
 	TCase *tc_tag;
 	TCase *tc_getrepopath;
+	TCase *tc_fileops;
 
 	s = suite_create("Repo");
 
@@ -344,10 +365,16 @@ Suite *repo_suite(void)
 	tcase_add_test(tc_getrepopath, getrepopath_ok);
 	tcase_add_test(tc_getrepopath, getrepopath_null);
 
+	/* File operations */
+	tc_fileops = tcase_create("fileop");
+	tcase_add_checked_fixture(tc_fileops, setup_repo, teardown_repo);
+	tcase_add_test(tc_fileops, rename_file);
+
 	/* Add test cases to suite */
 	suite_add_tcase(s, tc_init);
 	suite_add_tcase(s, tc_tag);
 	suite_add_tcase(s, tc_getrepopath);
+	suite_add_tcase(s, tc_fileops);
 
 	return s;
 }
