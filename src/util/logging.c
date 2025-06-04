@@ -13,7 +13,6 @@
 #include "misc.h"
 #include "string.h"
 #include "util/error.h"
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <syslog.h>
