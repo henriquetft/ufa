@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2022-2025 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of UFA Daemon.                                              */
@@ -183,6 +183,7 @@ end:
 	}
 	ufa_free(filepath_log);
 	ufa_free(PID_FILE);
+	ufa_info("Exiting daemon with code = %d", exit_status);
 	return exit_status;
 }
 
@@ -209,17 +210,18 @@ static int start_ufad(const char *program)
 		ufa_error_print_and_free(error);
 		return EXIT_FAILURE;
 	}
+	ufa_debug("Number of dirs watched: %d", ufa_list_size(list_dirs_config));
 
 	if (!ufa_monitor_init()) {
 		return EXIT_FAILURE;
 	}
 
-	ufa_info("Adding watcher to config dir: %s", cfg_dir);
+	ufa_info("Adding watcher for config dir: %s", cfg_dir);
 	ufa_monitor_add_watcher(cfg_dir,
 				CONFIG_DIR_MASK,
 				callback_event_config);
 
-	ufa_debug("Adding watcher to repo list_dirs_config");
+	ufa_debug("Adding watcher for repo list_dirs_config");
 	for (UFA_LIST_EACH(i, list_dirs_config)) {
 		ufa_hashtable_put(table_current_dirs, ufa_str_dup(i->data),
 				  NULL);
