@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022-2024 Henrique Teófilo                                   */
+/* Copyright (c) 2022-2025 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* UFA configuration mechanism (implementation of config.h).                  */
@@ -15,6 +15,7 @@
 #include "util/string.h"
 #include <pthread.h>
 #include <stdio.h>
+#include <unistd.h>
 
 /* ========================================================================== */
 /* VARIABLES AND DEFINITIONS                                                  */
@@ -118,7 +119,9 @@ bool ufa_config_add_dir(const char *dir, struct ufa_error **error)
 	ufa_debug("DIR abspath: (%s)", normdir);
 	ufa_debug("IS DIR: %d", isdir);
 	if (!isdir) {
-		ufa_error_new(error, UFA_ERROR_NOTDIR, "'%s' is not a dir", dir);
+		ufa_error_new(error, UFA_ERROR_NOTDIR,
+		              "'%s' is not a dir",
+		              dir);
 		goto end;
 	}
 
@@ -128,7 +131,8 @@ bool ufa_config_add_dir(const char *dir, struct ufa_error **error)
 
 	if (!found_in_list) {
 		ufa_debug("Adding dir to config: %s", normdir);
-		dirs = ufa_list_append2(dirs, ufa_str_dup(normdir), ufa_free);
+		dirs = ufa_list_append2(dirs, ufa_str_dup(normdir),
+		                        ufa_free);
 		write_config(dirs, error);
 		ufa_goto_iferror(error, freeres);
 	}
@@ -276,34 +280,61 @@ end:
 
 static void write_config(const struct ufa_list *list, struct ufa_error **error)
 {
+
+	ufa_debug("Saving config gile");
+
 	ufa_return_if(list == NULL);
 	ufa_return_iferror(error);
 
-	char *dirs_file = NULL;
-	FILE *file      = NULL;
+	char *dirs_file = get_config_dirs_filepath();
+	char *tmp_file = NULL;
+	FILE *file = NULL;
 
-	dirs_file = get_config_dirs_filepath();
-	file = fopen(dirs_file, "w");
+	// Create temp file
+	tmp_file = ufa_util_joinpath(dirs_file, ".tmp", NULL);
+
+	file = fopen(tmp_file, "w");
 	if (file == NULL) {
-		ufa_error_new(error, UFA_ERROR_FILE, "Could not open file: %s",
-			      file);
+		ufa_error_new(error, UFA_ERROR_FILE,
+			"Could not open temp file for writing: %s",
+			tmp_file);
 		goto freeres;
 	}
 
+	// Write header
 	fprintf(file, DIRS_FILE_DEFAULT_STRING);
 
 	if (ufa_log_is_logging(UFA_LOG_DEBUG)) {
 		ufa_debug("Writing %d dirs to '%s'", ufa_list_size(list),
-			  dirs_file);
+			tmp_file);
 	}
+
+	// Write all dirs
 	for (UFA_LIST_EACH(i, list)) {
 		char *dir = (char *) i->data;
-		ufa_debug("Writing '%s' to file '%s'", dir, dirs_file);
 		fprintf(file, "%s\n", dir);
 	}
+
+	ufa_debug("%d lines written in config file", ufa_list_size(list));
+
+	fflush(file);
+	fsync(fileno(file));
+	fclose(file);
+	file = NULL;
+
+	ufa_debug("Renamig '%s' to '%s'", tmp_file, dirs_file);
+	// replace file. atomic operation
+	if (rename(tmp_file, dirs_file) != 0) {
+		ufa_error_new(error, UFA_ERROR_FILE,
+			"Could not rename temp file '%s' to '%s'",
+			tmp_file, dirs_file);
+		goto freeres;
+	}
+
 freeres:
-	if (file != NULL) {
-		fclose(file);
+	if (file) {
+	    	fclose(file); // em caso de erro
 	}
 	ufa_free(dirs_file);
+	ufa_free(tmp_file);
 }
