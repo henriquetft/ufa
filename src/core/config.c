@@ -287,13 +287,25 @@ static void write_config(const struct ufa_list *list, struct ufa_error **error)
 	ufa_return_iferror(error);
 
 	char *dirs_file = get_config_dirs_filepath();
-	char *tmp_file = NULL;
-	FILE *file = NULL;
+	char *tmp_file  = NULL;
+	char *cfg_dir   = NULL;
+	FILE *file      = NULL;
 
 	// Create temp file
-	tmp_file = ufa_util_joinpath(dirs_file, ".tmp", NULL);
+	cfg_dir  = ufa_util_config_dir(CONFIG_DIR_NAME);
+	tmp_file = ufa_util_joinpath(cfg_dir, "ufacfgXXXXXX", NULL);
 
-	file = fopen(tmp_file, "w");
+	int fd = mkstemp(tmp_file);
+	if (fd == -1) {
+		perror("mkstemp");
+		ufa_error_new(error, UFA_ERROR_FILE,
+			"Could not create temp file for writing: %s",
+			tmp_file);
+		goto freeres;
+	}
+
+	file = fdopen(fd, "w");
+
 	if (file == NULL) {
 		ufa_error_new(error, UFA_ERROR_FILE,
 			"Could not open temp file for writing: %s",
@@ -323,7 +335,7 @@ static void write_config(const struct ufa_list *list, struct ufa_error **error)
 	file = NULL;
 
 	ufa_debug("Renamig '%s' to '%s'", tmp_file, dirs_file);
-	// replace file. atomic operation
+	// Replace file. Atomic operation
 	if (rename(tmp_file, dirs_file) != 0) {
 		ufa_error_new(error, UFA_ERROR_FILE,
 			"Could not rename temp file '%s' to '%s'",
@@ -337,4 +349,5 @@ freeres:
 	}
 	ufa_free(dirs_file);
 	ufa_free(tmp_file);
+	ufa_free(cfg_dir);
 }
