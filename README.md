@@ -100,7 +100,6 @@ UFA uses a **client-daemon architecture**. CLI tools communicate with a backgrou
 This provides:
 
 - Clear API boundaries (e.g., for GUIs, web UIs or remote tools)
-- Safe, local communication with permission control
 - High extensibility
 
 All metadata is stored in an SQLite database (`repo.db`) at the repository root.
