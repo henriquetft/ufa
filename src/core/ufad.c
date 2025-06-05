@@ -137,6 +137,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	bool damonize = !foreground;
+
 	// Get or create config dir
 	char *cfg_dir = ufa_util_config_dir(CONFIG_DIR_NAME);
 	if (!ufa_util_isdir(cfg_dir)) {
@@ -150,7 +152,7 @@ int main(int argc, char *argv[])
 	PID_FILE = ufa_str_sprintf("%s/ufad.pid", cfg_dir);
 	ufa_free(cfg_dir);
 
-	if (!foreground) {
+	if (damonize) {
 		ufa_log_use_syslog();
 		ufa_daemon(program_name);
 	}
@@ -161,7 +163,7 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	if (!foreground) {
+	if (damonize) {
 		if (!log) {
 			ufa_log_setlevel(UFA_LOG_INFO);
 		}
@@ -171,6 +173,9 @@ int main(int argc, char *argv[])
 			ufa_error_error(error);
 		} else {
 			file_log = fopen(filepath_log, "a");
+
+			// For now, it's better to always write to the file.
+			// Change it in more stable versions
 			ufa_log_use_file(file_log);
 		}
 
