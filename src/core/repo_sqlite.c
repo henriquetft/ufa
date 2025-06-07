@@ -238,7 +238,7 @@ bool ufa_repo_isatag(const ufa_repo_t *repo,
 	char *last_part = ufa_util_getfilename(path);
 	bool ret = (ufa_repo_get_realfilepath(repo, path, NULL) == NULL &&
 		    get_tag_id_by_name(repo, last_part, error) > 0);
-	free(last_part);
+	ufa_free(last_part);
 	return ret;
 }
 
@@ -558,7 +558,7 @@ struct ufa_list *ufa_repo_search(const ufa_repo_t *repo,
 				sqlite3_bind_text(stmt, x++, value, -1,
 						  SQLITE_TRANSIENT);
 				ufa_debug("Bind value: %s", value);
-				free(value);
+				ufa_free(value);
 			}
 		}
 		sqlite3_bind_int(stmt, x++, count_attrs);
@@ -577,9 +577,9 @@ struct ufa_list *ufa_repo_search(const ufa_repo_t *repo,
 
 freeres:
 	sqlite3_finalize(stmt);
-	free(sql_search_tags);
-	free(sql_search_attrs);
-	free(full_sql);
+	ufa_free(sql_search_tags);
+	ufa_free(sql_search_attrs);
+	ufa_free(full_sql);
 	ufa_debug("Search result: %p", result_list_names);
 end:
 	return result_list_names;
@@ -1038,7 +1038,8 @@ static struct ufa_repo *open_sqlite_conn(const char *file,
 
 	/* if new file, create tables */
 	if (st.st_size == 0) {
-		ufa_debug("Creating tables ...\n" STR_CREATE_TABLE);
+		ufa_debug("File %s empty. Creating tables ...\n"
+		STR_CREATE_TABLE, file);
 		db_begin(repo);
 		rc = sqlite3_exec(repo->db, STR_CREATE_TABLE, NULL, 0, &errmsg);
 		if (rc != SQLITE_OK) {
