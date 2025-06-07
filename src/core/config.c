@@ -77,7 +77,6 @@ struct ufa_list *ufa_config_dirs(bool reload, struct ufa_error **error)
 			if (!ufa_util_isdir(line)) {
 				ufa_warn("%s is not a dir", line);
 			} else {
-				ufa_debug("%s is a valid dir", line);
 				list = ufa_list_prepend(list,
 							ufa_str_dup(line));
 			}
