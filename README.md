@@ -152,3 +152,4 @@ UFA was designed to be modular and extensible. Ideas for future development:
 - GUI management tool
 - Dolphin extension (context menu)
 - Integration with any other file manager
+- Enhance search capabilities (additional operators, etc)
