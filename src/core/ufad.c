@@ -370,13 +370,13 @@ static void reload_config()
 static void callback_event_repo(const struct ufa_event *event)
 {
 	struct ufa_error *error = NULL;
-	// FIXME handle .goutputstream-* files ?
-	log_event(event);
 	if (event->event == UFA_MONITOR_MOVE) {
 		if (event->target1 && event->target2) {
+			log_event(event);
 			ufa_data_renamefile(event->target1, event->target2,
 					    &error);
 		} else if (event->target1) {
+			log_event(event);
 			ufa_data_removefile(event->target1, &error);
 		} else if (event->target2) {
 			// File added in folder. Do nohitng.
