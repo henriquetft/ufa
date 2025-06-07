@@ -1,5 +1,5 @@
 /* ========================================================================== */
-/* Copyright (c) 2022-2023 Henrique Teófilo                                   */
+/* Copyright (c) 2022-2025 Henrique Teófilo                                   */
 /* All rights reserved.                                                       */
 /*                                                                            */
 /* Implementation of monitor module (monitor.h) using inotify.                */
@@ -68,7 +68,7 @@ static int uint32_hash(uint32_t *i);
 static struct ufa_event *free_ufa_event(struct ufa_event *uevent);
 static int to_inotify_mask(enum ufa_monitor_event events);
 static void mask_to_str(unsigned int mask, char *str);
-static void print_event(const struct inotify_event *event);
+static void log_inotify_event(const struct inotify_event *event);
 static void process_ufa_event(struct ufa_event *uevent);
 static void handle_inotify_delete(struct inotify_event *event);
 static void handle_inotify_closewrite(struct inotify_event *event);
@@ -121,7 +121,7 @@ bool ufa_monitor_init()
 
 	table_filename  = UFA_HASHTABLE_STRING();
 
-	// start thread
+	// Start thread
 	int ret = pthread_create(&events_loop_thread,
 				 NULL,
 				 loop_read_events,
@@ -129,7 +129,10 @@ bool ufa_monitor_init()
 	if (ret < 0) {
 		ufa_error("pthread_create: %s", strerror(errno));
 		close_and_free_state();
+	} else {
+		sleep(1);
 	}
+
 	return !ret;
 }
 
@@ -379,7 +382,7 @@ static void mask_to_str(unsigned int mask, char *str)
 	}
 }
 
-static void print_event(const struct inotify_event *event)
+static void log_inotify_event(const struct inotify_event *event)
 {
 	char str[500] = "";
 	mask_to_str(event->mask, str);
@@ -402,9 +405,9 @@ static void process_ufa_event(struct ufa_event *uevent)
 	} else if (uevent->watcher2) {
 		watcher = uevent->watcher2;
 	}
-	// TODO invoke callback for 2 watchers if they are different?
+	// TODO Invoke callback for 2 watchers if they are different?
 
-	// invoke callback
+	// Invoke callback
 	ufa_monitor_event_fn_t func = ufa_hashtable_get(callbacks, &watcher);
 	if (func != NULL) {
 		ufa_debug("Invoking callback for %d: %p\n", watcher, func);
@@ -433,7 +436,7 @@ static void handle_inotify_delete(struct inotify_event *event)
 
 static void handle_inotify_closewrite(struct inotify_event *event)
 {
-	ufa_debug("Close write event");
+	// ufa_debug("Close write event");
 	struct ufa_event *uevent = NULL;
 
 	char *dir = ufa_hashtable_get(table, &(event->wd));
@@ -516,9 +519,8 @@ static void read_inotify_events()
 		event = (struct inotify_event *) &buf[i];
 		int total_size = EVENT_SIZE + event->len;
 
-		print_event(event);
-
 		if ((event->mask & IN_MOVE) && event->cookie) {
+			log_inotify_event(event);
 			struct inotify_event *prev =
 			    ufa_hashtable_get(buffered_events,
 					      &(event->cookie));
@@ -534,8 +536,10 @@ static void read_inotify_events()
 						     &(event->cookie));
 			}
 		} else if (event->mask & IN_DELETE) {
+			log_inotify_event(event);
 			handle_inotify_delete(event);
 		} else if (event->mask & IN_CLOSE_WRITE) {
+			// log_inotify_event(event);
 			handle_inotify_closewrite(event);
 		}
 
